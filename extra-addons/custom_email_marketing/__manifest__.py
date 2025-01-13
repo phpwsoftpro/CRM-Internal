@@ -1,10 +1,19 @@
 {
-    "name": "Mass Mailing Customization",
+    "name": "Custom Menu Override",
+    "summary": "Override the Email Marketing menu with Companies and Contacts",
     "version": "1.0",
-    "depends": ["mass_mailing", "contacts"],
+    "author": "Your Name",
+    "category": "Marketing",
+    "license": "LGPL-3",
+    "depends": [
+        "base",  # Module cơ bản
+        'mass_mailing',
+        'contacts'  # Module Email Marketing
+    ],
     "data": [
-        "views/mass_mailing_views.xml",
+        "views/custom_menu_view.xml",  # File XML chứa khai báo menu
     ],
     "installable": True,
-    "application": False,
+    "auto_install": False,
+    "application": True,
 }
