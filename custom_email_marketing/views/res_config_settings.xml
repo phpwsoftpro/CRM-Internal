@@ -1,0 +1,16 @@
+<odoo>
+    <data>
+        <record id="view_res_config_settings_form_inherit" model="ir.ui.view">
+            <field name="name">res.config.settings.inherit.email.signature</field>
+            <field name="model">res.config.settings</field>
+            <field name="inherit_id" ref="base.view_res_config_settings"/>
+            <field name="arch" type="xml">
+                <xpath expr="//div[@class='o_settings_container']" position="inside">
+                    <div>
+                        <field name="default_email_signature" widget="html"/>
+                    </div>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

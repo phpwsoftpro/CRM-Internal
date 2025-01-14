@@ -1,9 +1,8 @@
 {
     "name": "Mass Mailing Customization",
-    "version": "1.0",
-    "depends": ["mass_mailing", "contacts"],
+    "depends": ["base", "mass_mailing"],  # Đảm bảo 'mass_mailing' có trong danh sách
     "data": [
-        "views/mass_mailing_views.xml",
+        # "views/res_config_settings.xml",
     ],
     "installable": True,
     "application": False,

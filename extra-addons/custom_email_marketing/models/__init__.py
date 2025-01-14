@@ -1,1 +1,1 @@
-from . import mass_mailing
+from . import signature_email
