@@ -6,14 +6,15 @@
     "category": "Marketing",
     "license": "LGPL-3",
     "depends": [
-        'base',
-        'mail',
-        'mass_mailing'  # assuming you need this based on your menus
+        "base",
+        "mail",
+        "mass_mailing",  # assuming you need this based on your menus
     ],
     "data": [
         "security/ir.model.access.csv",  # File CSV chứa quyền truy cập
         "views/custom_menu_view.xml",
         "views/form_view_company.xml",
+        "views/custom_send_email_template.xml",
     ],
     "installable": True,
     "auto_install": False,
