@@ -1,0 +1,65 @@
+<odoo>
+    <record id="view_res_partner_form_custom" model="ir.ui.view">
+        <field name="name">res.partner.form.custom</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group invisible="not is_company">
+                    <group>
+                        <field name="industry" string="Industry"/>
+                        <field name="company_owner_id" string="Company Owner"/>
+                        <field name="timezone" string="Timezone"/>
+                    </group>
+                    <group>
+                        <field name="description" string="Description Company"/>
+                        <field name="linkedin_link" string="LinkedIn Link"/>
+                    </group>
+                </group>
+            </xpath>
+             <xpath expr="//sheet"  position="inside">
+                <group invisible="is_company">
+                    <group >
+                        <field name="contact_owner_id"/>
+                        <field name="tech_stack"/>
+                    </group>
+                    <group>
+                        <field name="send_again"/>
+                        <field name="lead_status"/>
+                    </group>
+                </group>
+
+            </xpath>
+
+            <xpath expr="//notebook" position="inside" >
+               <page string="Contacts">
+                    <field name="child_ids" mode="list,kanban">
+                        <list>
+                            <field name="name"/>
+                            <field name="email" widget="email"/> 
+                            <field name="phone"/>
+                            <field name="mobile"/>
+                        </list>
+                        <kanban>
+                            <field name="name"/>
+                            <field name="email" widget="email"/> 
+                            <field name="phone"/>
+                            <templates>
+                                <t t-name="kanban-box">
+                                    <div class="oe_kanban_global_click">
+                                        <strong><field name="name"/></strong>
+                                        <div><a t-att-href="'mailto:' + record.email.raw_value"><field name="email"/></a></div>
+                                        <div><field name="phone"/></div>
+                                    </div>
+                                </t>
+                            </templates>
+                        </kanban>
+                    </field>
+                </page>
+                <page string="Mail History">
+                    <field name="message_ids" widget="mail_thread" options="{'res_model': 'res.partner'}"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
