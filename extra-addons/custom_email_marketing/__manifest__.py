@@ -6,12 +6,14 @@
     "category": "Marketing",
     "license": "LGPL-3",
     "depends": [
-        "base",  # Module cơ bản
-        'mass_mailing',
-        'contacts'  # Module Email Marketing
+        'base',
+        'mail',
+        'mass_mailing'  # assuming you need this based on your menus
     ],
     "data": [
-        "views/custom_menu_view.xml",  # File XML chứa khai báo menu
+        "security/ir.model.access.csv",  # File CSV chứa quyền truy cập
+        "views/custom_menu_view.xml",
+        "views/form_view_company.xml",
     ],
     "installable": True,
     "auto_install": False,
