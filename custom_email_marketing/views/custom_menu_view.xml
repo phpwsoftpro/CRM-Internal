@@ -11,7 +11,7 @@
                 <field name="email" string="Email"/>
                 <field name="last_activity_date" string="Last Activity Date (GMT+7)"/>
                 <field name="create_date" string="Create Date (GMT+7)"/>
-                <field name="tech_stack" string="Area (Techstack)"/>
+              <field name="tech_stack_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
             </list>
         </field>
     </record>
@@ -50,22 +50,16 @@
     </record>
 
     <!-- Parent Menu -->
-    <menuitem id="menu_mass_mailing_companies_contacts"
-              name="Companies &amp; Contacts"
-              parent="mass_mailing.mass_mailing_menu_root"
-              sequence="20"/>
-
-    <!-- Submenu for Companies -->
     <menuitem id="menu_mass_mailing_companies"
               name="Companies"
-              parent="menu_mass_mailing_companies_contacts"
+              parent="mass_mailing.mass_mailing_menu_root"
               action="action_mass_mailing_companies"
-              sequence="10"/>
+              sequence="20"/>
 
-    <!-- Submenu for Contacts -->
+    <!-- Menu for Contacts -->
     <menuitem id="menu_mass_mailing_contacts"
               name="Contacts"
-              parent="menu_mass_mailing_companies_contacts"
+              parent="mass_mailing.mass_mailing_menu_root"
               action="action_mass_mailing_contacts"
-              sequence="20"/>
+              sequence="30"/>
 </odoo>

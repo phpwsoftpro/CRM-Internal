@@ -24,14 +24,10 @@ class ResPartner(models.Model):
         ('won', 'Won'),
         ('lost', 'Lost'),
     ], string="Lead Status")
-    tech_stack = fields.Selection([
-        ('php', "PHP"),
-        ('python', "Python"),
-        ('javascript', "JavaScript"),
-        ('java', "Java"),
-        ('csharp', "C#"),
-        ('ruby', "Ruby"),
-    ], string="Area (Techstack)")
+    tech_stack_ids = fields.Many2many(
+        'tech.stack',
+        string="Area (Techstack)"
+    )
 
     @api.model
     def message_get_reply_to(self):
@@ -42,4 +38,3 @@ class ResPartner(models.Model):
     def _compute_last_modified_date(self):
         for record in self:
             record.last_modified_date = record.write_date
-    
