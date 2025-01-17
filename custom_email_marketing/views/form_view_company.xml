@@ -4,6 +4,9 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='company_type']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
             <xpath expr="//sheet" position="inside">
                 <group invisible="not is_company">
                     <group>
@@ -21,7 +24,7 @@
                 <group invisible="is_company">
                     <group >
                         <field name="contact_owner_id"/>
-                        <field name="tech_stack"/>
+                        <field name="tech_stack_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
                     </group>
                     <group>
                         <field name="send_again"/>
@@ -33,7 +36,7 @@
 
             <xpath expr="//notebook" position="inside" >
                <page string="Contacts">
-                    <field name="child_ids" mode="list,kanban">
+                    <field name="child_ids" mode="list,kanban" domain="[('email', 'ilike', '@' + name)]">
                         <list>
                             <field name="name"/>
                             <field name="email" widget="email"/> 

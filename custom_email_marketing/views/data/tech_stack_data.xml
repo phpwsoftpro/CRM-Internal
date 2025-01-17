@@ -1,0 +1,26 @@
+<odoo>
+    <record id="tech_stack_php" model="tech.stack">
+        <field name="name">PHP</field>
+        <field name="color">1</field> <!-- Màu đỏ -->
+    </record>
+    <record id="tech_stack_python" model="tech.stack">
+        <field name="name">Python</field>
+        <field name="color">2</field> <!-- Màu xanh -->
+    </record>
+    <record id="tech_stack_javascript" model="tech.stack">
+        <field name="name">JavaScript</field>
+        <field name="color">3</field> <!-- Màu vàng -->
+    </record>
+    <record id="tech_stack_java" model="tech.stack">
+        <field name="name">Java</field>
+        <field name="color">4</field> <!-- Màu tím -->
+    </record>
+    <record id="tech_stack_csharp" model="tech.stack">
+        <field name="name">C#</field>
+        <field name="color">5</field> <!-- Màu cam -->
+    </record>
+    <record id="tech_stack_ruby" model="tech.stack">
+        <field name="name">Ruby</field>
+        <field name="color">6</field> <!-- Màu hồng -->
+    </record>
+</odoo>
