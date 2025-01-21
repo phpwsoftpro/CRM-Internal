@@ -11,7 +11,7 @@
                 <field name="email" string="Email"/>
                 <field name="last_activity_date" string="Last Activity Date (GMT+7)"/>
                 <field name="create_date" string="Create Date (GMT+7)"/>
-                <field name="tech_stack" string="Area (Techstack)"/>
+              <field name="tech_stack_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
             </list>
         </field>
     </record>

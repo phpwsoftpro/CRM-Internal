@@ -57,13 +57,13 @@ class ResPartner(models.Model):
 
     def action_open_send_email_wizard(self):
         return {
-            'type': 'ir.actions.act_window',
-            'name': 'Send Email',
-            'res_model': 'custom.email.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'default_partner_id': self.id,
-                'default_email_to': self.email,
+            "type": "ir.actions.act_window",
+            "name": "Send Email",
+            "res_model": "custom.email.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_partner_id": self.id,
+                "default_email_to": self.email,
             },
         }
