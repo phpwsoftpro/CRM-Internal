@@ -58,12 +58,9 @@
     <!-- Menu for Inbox -->
     <menuitem id="menu_email_marketing_inbox" name="Inbox" parent="mass_mailing.mass_mailing_menu_root" action="action_email_marketing_inbox" sequence="25" />
 
-    <!-- Parent Menu -->
-    <menuitem id="menu_mass_mailing_companies_contacts" name="Companies &amp; Contacts" parent="mass_mailing.mass_mailing_menu_root" sequence="20"/>
-
     <!-- Submenu for Companies -->
-    <menuitem id="menu_mass_mailing_companies" name="Companies" parent="menu_mass_mailing_companies_contacts" action="action_mass_mailing_companies" sequence="10"/>
+    <menuitem id="menu_mass_mailing_companies" name="Companies"  parent="mass_mailing.mass_mailing_menu_root" action="action_mass_mailing_companies" sequence="10"/>
 
     <!-- Submenu for Contacts -->
-    <menuitem id="menu_mass_mailing_contacts" name="Contacts" parent="menu_mass_mailing_companies_contacts" action="action_mass_mailing_contacts" sequence="20"/>
+    <menuitem id="menu_mass_mailing_contacts" name="Contacts"  parent="mass_mailing.mass_mailing_menu_root" action="action_mass_mailing_contacts" sequence="20"/>
 </odoo>
