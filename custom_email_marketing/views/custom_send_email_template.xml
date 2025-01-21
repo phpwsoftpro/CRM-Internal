@@ -1,0 +1,11 @@
+<odoo>
+    <data>
+        <!-- Wizard gửi email -->
+        <record id="action_send_email_wizard" model="ir.actions.act_window">
+            <field name="name">Send Email</field>
+            <field name="res_model">custom.email.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+    </data>
+</odoo>
