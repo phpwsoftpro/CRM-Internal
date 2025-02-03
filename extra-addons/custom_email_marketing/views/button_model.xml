@@ -1,0 +1,15 @@
+<odoo>
+    <data>
+        <record id="view_discuss_form" model="ir.ui.view">
+            <field name="name">mail.thread.form</field>
+            <field name="model">mail.thread</field>
+            <field name="arch" type="xml">
+                <form>
+                    <footer>
+                        <button name="action_my_custom_button" string="Nút của tôi" type="object"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>
