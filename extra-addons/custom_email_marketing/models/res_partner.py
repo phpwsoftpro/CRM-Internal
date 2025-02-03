@@ -1,4 +1,5 @@
 from odoo import models, fields, api
+from .industries import INDUSTRY_SELECTION
 from odoo.exceptions import ValidationError
 
 
@@ -16,7 +17,10 @@ class ResPartner(models.Model):
         compute="_compute_last_modified_date",
         store=True,
     )
-    industry = fields.Char(string="Industry")
+    industry = fields.Selection(
+        INDUSTRY_SELECTION,
+        string="Industry",
+    )
     state_id = fields.Many2one("res.country.state", string="State/Region")
     timezone = fields.Char(string="Timezone")
     description = fields.Text(string="Description Company")
