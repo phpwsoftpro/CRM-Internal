@@ -9,7 +9,7 @@
     'depends': ['mail'],
     'data': [
         'views/discuss_view.xml',
-        'data/cron_job_data.xml',
+        
     ],
     'installable': True,
     'application': False,
