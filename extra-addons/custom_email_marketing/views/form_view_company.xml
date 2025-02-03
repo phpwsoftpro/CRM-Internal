@@ -7,6 +7,18 @@
             <xpath expr="//field[@name='company_type']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
+            <xpath expr="//notebook/page[1]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//notebook/page[2]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//notebook/page[3]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//page[@name='internal_notes']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
             <xpath expr="//sheet" position="inside">
                 <group invisible="not is_company">
                     <group>
@@ -31,36 +43,59 @@
                         <field name="lead_status"/>
                     </group>
                 </group>
-
             </xpath>
-
+            <!-- Thêm nút gửi email -->
+            <div name="button_box" position="inside">
+                <button
+                    class="oe_stat_button"
+                    type="object"
+                    name="action_open_mail_composer"
+                    icon="fa-envelope">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Send</span>
+                        <span class="o_stat_text">Email</span>
+                    </div>
+                </button>
+            </div>
+            <!-- Hiển thị danh sách Contacts -->
             <xpath expr="//notebook" position="inside">
                 <page string="Contacts">
-                    <field name="child_ids" mode="list,kanban" domain="[('email', 'ilike', '@' + name)]">
+                    <field name="child_ids" mode="list,kanban">
                         <list>
                             <field name="name"/>
-                            <field name="email" widget="email"/>
+                            <field name="email"/>
                             <field name="phone"/>
                             <field name="mobile"/>
+                            <!-- Nút gửi email -->
+                            <button
+                                name="action_open_mail_composer"
+                                type="object"
+                                class="btn-link"
+                                icon="fa-envelope"
+                                string="Compose Email"
+                                context="{
+                                    'default_email_to': email,
+                                    'default_recipient_ids': [(6, 0, [id])]
+                                }"/>
                         </list>
                         <kanban>
                             <field name="name"/>
-                            <field name="email" widget="email"/>
+                            <field name="email"/>
                             <field name="phone"/>
                             <templates>
                                 <t t-name="kanban-box">
                                     <div class="oe_kanban_global_click">
-                                        <strong>
-                                            <field name="name"/>
-                                        </strong>
+                                        <strong><field name="name"/></strong>
                                         <div>
-                                            <a t-att-href="'mailto:' + record.email.raw_value">
+                                            <!-- Nút gửi mail -->
+                                            <button
+                                                name="action_open_mail_composer"
+                                                type="object"
+                                                class="btn btn-link p-0">
                                                 <field name="email"/>
-                                            </a>
+                                            </button>
                                         </div>
-                                        <div>
-                                            <field name="phone"/>
-                                        </div>
+                                        <div><field name="phone"/></div>
                                     </div>
                                 </t>
                             </templates>

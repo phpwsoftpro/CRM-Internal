@@ -49,9 +49,18 @@
         <field name="view_id" ref="view_res_partner_contacts_list"/>
     </record>
 
-    <!-- Parent Menu -->
-    <menuitem id="menu_mass_mailing_companies" name="Companies" parent="mass_mailing.mass_mailing_menu_root" action="action_mass_mailing_companies" sequence="20"/>
+    <!-- Action for Inbox linked to Discuss -->
+    <record id="action_email_marketing_inbox" model="ir.actions.client">
+        <field name="name">Inbox</field>
+        <field name="tag">mail.action_discuss</field>
+    </record>
 
-    <!-- Menu for Contacts -->
-    <menuitem id="menu_mass_mailing_contacts" name="Contacts" parent="mass_mailing.mass_mailing_menu_root" action="action_mass_mailing_contacts" sequence="30"/>
+    <!-- Menu for Inbox -->
+    <menuitem id="menu_email_marketing_inbox" name="Inbox" parent="mass_mailing.mass_mailing_menu_root" action="action_email_marketing_inbox" sequence="25" />
+
+    <!-- Submenu for Companies -->
+    <menuitem id="menu_mass_mailing_companies" name="Companies"  parent="mass_mailing.mass_mailing_menu_root" action="action_mass_mailing_companies" sequence="10"/>
+
+    <!-- Submenu for Contacts -->
+    <menuitem id="menu_mass_mailing_contacts" name="Contacts"  parent="mass_mailing.mass_mailing_menu_root" action="action_mass_mailing_contacts" sequence="20"/>
 </odoo>

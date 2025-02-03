@@ -15,7 +15,7 @@
         "views/custom_menu_view.xml",
         "views/form_view_company.xml",
         "views/data/tech_stack_data.xml",
-        # "views/button_model.xml",
+        "views/custom_send_email_template.xml",
     ],
     "installable": True,
     "auto_install": False,

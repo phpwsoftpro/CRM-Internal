@@ -2,6 +2,7 @@ from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 
 
+
 class ResPartner(models.Model):
     _inherit = "res.partner"
 
@@ -105,3 +106,32 @@ class ResPartner(models.Model):
                     raise ValidationError(
                         f"The website '{record.website}' is already in use. Please use a unique website."
                     )
+    def action_open_mail_composer(self):
+        self.ensure_one()
+        # Get the current user's formatted email
+        user_email = self.env.user.partner_id.email_formatted
+        company_email = self.env.user.company_id.email_formatted
+        
+        ctx = {
+            'default_model': 'res.partner',
+            'default_res_ids': [self.id],
+            'default_composition_mode': 'comment',
+            'force_email': True,
+            'default_email_from': user_email or company_email,
+            'default_author_id': self.env.user.partner_id.id,
+            'default_email_to': self.email, 
+            'default_recipient_ids': [(6, 0, [self.id])],  
+            'default_partner_ids': [(6, 0, [self.id])],  
+            'show_email_from': True,
+            'mail_notify_force_send': True,
+            'default_subject': f"{self.name}",
+        }
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'view_mode': 'form',
+            'res_model': 'mail.compose.message',
+            'views': [(False, 'form')],
+            'target': 'new',
+            'context': ctx,
+        }
