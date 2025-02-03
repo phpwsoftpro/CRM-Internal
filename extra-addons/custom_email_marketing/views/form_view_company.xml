@@ -32,7 +32,7 @@
                     </group>
                 </group>
             </xpath>
-             <xpath expr="//sheet"  position="inside">
+            <xpath expr="//sheet" position="inside">
                 <group invisible="is_company">
                     <group >
                         <field name="contact_owner_id"/>

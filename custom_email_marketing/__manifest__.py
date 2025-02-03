@@ -2,7 +2,7 @@
     "name": "Custom Menu Override",
     "summary": "Override the Email Marketing menu with Companies and Contacts",
     "version": "1.0",
-    "author": "Your Name",
+    "author": "",
     "category": "Marketing",
     "license": "LGPL-3",
     "depends": [

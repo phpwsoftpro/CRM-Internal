@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <list string="Contacts">
                 <field name="name"/>
-                <field name="company_id"/>
+               <field name="company_id" string="Company" widget="many2one"/>
                 <field name="email" string="Email"/>
                 <field name="last_activity_date" string="Last Activity Date (GMT+7)"/>
                 <field name="create_date" string="Create Date (GMT+7)"/>
