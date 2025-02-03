@@ -57,12 +57,24 @@
         <field name="tag">mail.action_discuss</field>
     </record>
 
+    <!-- <record id="view_discuss_inherit_sync_gmail" model="ir.ui.view">
+        <field name="name">discuss.inherit.sync.gmail</field>
+        <field name="model">mail.message</field>
+        <field name="inherit_id" ref="mail.view_thread"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[contains(@class, 'd-flex align-items-center justify-content-center')]" position="after">
+                <button name="fetch_gmail_messages" type="object" class="btn btn-primary" string="Sync Gmail"/>
+            </xpath>
+        </field>
+    </record> -->
+
+
     <!-- Menu for Inbox -->
     <menuitem id="menu_email_marketing_inbox" name="Inbox" parent="mass_mailing.mass_mailing_menu_root" action="action_email_marketing_inbox" sequence="25" />
 
     <!-- Submenu for Companies -->
-    <menuitem id="menu_mass_mailing_companies" name="Companies"  parent="mass_mailing.mass_mailing_menu_root" action="action_mass_mailing_companies" sequence="10"/>
+    <menuitem id="menu_mass_mailing_companies" name="Companies" parent="mass_mailing.mass_mailing_menu_root" action="action_mass_mailing_companies" sequence="10"/>
 
     <!-- Submenu for Contacts -->
-    <menuitem id="menu_mass_mailing_contacts" name="Contacts"  parent="mass_mailing.mass_mailing_menu_root" action="action_mass_mailing_contacts" sequence="20"/>
+    <menuitem id="menu_mass_mailing_contacts" name="Contacts" parent="mass_mailing.mass_mailing_menu_root" action="action_mass_mailing_contacts" sequence="20"/>
 </odoo>

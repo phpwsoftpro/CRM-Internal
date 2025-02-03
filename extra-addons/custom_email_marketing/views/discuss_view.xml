@@ -1,0 +1,81 @@
+<odoo>
+    <!-- Define a server action to handle the Gmail authentication -->
+    <record id="action_gmail_sync" model="ir.actions.server">
+        <field name="name">Sync Gmail Inbox</field>
+        <field name="model_id" ref="base.model_res_users"/>
+        <field name="state">code</field>
+        <field name="code">
+            action = env['mail.message'].action_redirect_gmail_auth()
+        </field>
+    </record>
+
+    <!-- Add a new menu item under Discuss -->
+    <menuitem id="menu_gmail_sync" name="Gmail Sync" parent="mail.menu_root_discuss" action="custom_email_marketing.action_gmail_sync" sequence="10" />
+
+    <!-- Template for Gmail Authentication Success -->
+    <template id="gmail_auth_success" name="Gmail Auth Success">
+        <t t-call="web.layout">
+            <div class="container mt16 o_success_page">
+                <h1>Gmail Authentication Successful</h1>
+                <p>Your Gmail messages have been successfully synchronized.</p>
+                <table class="table table-bordered mt16">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Snippet</th>
+                            <th>Date</th>
+                            <th>Author</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="request.env['mail.message'].sudo().search([('is_gmail', '=', True)], order='date desc', limit=10)" t-as="message">
+                            <tr>
+                                <td>
+                                    <t t-esc="message.subject or 'No Subject'" />
+                                </td>
+                                <td>
+                                    <t t-esc="message.gmail_snippet or 'No Snippet'" />
+                                </td>
+                                <td>
+                                    <t t-esc="message.date" />
+                                </td>
+                                <td>
+                                    <t t-esc="message.author_id.name or 'Unknown'" />
+                                </td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+                <a href="/web" class="btn btn-primary">Go to Discuss</a>
+            </div>
+        </t>
+    </template>
+
+    <!-- Template for Gmail Authentication Error -->
+    <template id="gmail_auth_error" name="Gmail Auth Error">
+        <t t-call="web.layout">
+            <div class="container mt16 o_error_page">
+                <h1>Gmail Authentication Error</h1>
+                <p>
+                    <t t-esc="error or 'An error occurred during Gmail authentication. Please try again.'" />
+                </p>
+                <a href="/web" class="btn btn-primary">Return to Home</a>
+            </div>
+        </t>
+    </template>
+
+    <data noupdate="1">
+        <!-- Scheduled Action for Gmail Sync -->
+        <record id="ir_cron_gmail_sync" model="ir.cron">
+            <field name="name">Gmail Sync</field>
+            <field name="model_id" ref="mail.model_mail_message"/>
+            <field name="state">code</field>
+            <field name="code">model.scheduled_gmail_sync()</field>
+            <field name="interval_number">1</field>            <!-- Run every 1 minute -->
+            <field name="interval_type">minutes</field>
+            <field name="active">True</field>
+        </record>
+    </data>
+
+
+</odoo>
