@@ -44,7 +44,7 @@ class MailComposer(models.TransientModel):
                         <div style="margin-bottom: 10px;">
                             <span style="font-size: 16px; color: #2d2d2d; font-weight: bold;">{user.name}</span>
                             <br>
-                            <span style="font-size: 14px; color: #45795b;">{user.function or ''}</span>
+                            <span style="font-size: 14px; color: #45795b;">{user.function or 'Nhân viên'}</span>
                             <br>
                             <span style="font-size: 14px; color: #2d2d2d; font-weight: bold;">{user.company_id.name}</span>
                         </div>
@@ -59,7 +59,7 @@ class MailComposer(models.TransientModel):
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="color: #666666;">
                                 <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4Zm13.86 0H2a.9.9 0 0 0-.8.54l6.8 4.93 6.8-4.93a.9.9 0 0 0-.8-.54ZM2.14 10.46l4.93-3.57L2 4v6h12V4l-5.07 3.6 4.93 3.57a.9.9 0 0 0 .8-.54H2a.9.9 0 0 0-.8.54Z"/>
                             </svg>
-                            <span style="color: #666666; font-size: 13px;">{user.email}</span>
+                            <span style="color: #666666; font-size: 13px;">{user.company_id.email}</span>
                         </div>
                         <div style="margin-bottom: 4px;">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="color: #666666;">
