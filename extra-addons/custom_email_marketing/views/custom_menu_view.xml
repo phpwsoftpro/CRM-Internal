@@ -38,6 +38,7 @@
         <field name="view_mode">list,form</field>
         <field name="domain">[('is_company', '=', True)]</field>
         <field name="view_id" ref="view_res_partner_companies_list"/>
+        <field name="context">{'default_company_type': 'company'}</field>
     </record>
 
     <!-- Action for Contacts -->
@@ -47,6 +48,7 @@
         <field name="view_mode">list,form</field>
         <field name="domain">[('is_company', '=', False)]</field>
         <field name="view_id" ref="view_res_partner_contacts_list"/>
+        <field name="context">{'default_company_type': 'person'}</field>
     </record>
 
     <!-- Action for Inbox linked to Discuss -->
