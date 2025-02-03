@@ -1,10 +1,17 @@
 from odoo import models, fields, api
 from .industries import INDUSTRY_SELECTION
+from odoo.exceptions import ValidationError
+
+
 
 class ResPartner(models.Model):
     _inherit = "res.partner"
 
-    last_activity_date = fields.Datetime(string="Last Activity Date (GMT+7)")
+    last_activity_date = fields.Datetime(
+        string="Last Activity Date (GMT+7)",
+        compute="_compute_last_activity_date",
+        store=True,
+    )
     last_modified_date = fields.Datetime(
         string="Last Modified Date (GMT+7)",
         compute="_compute_last_modified_date",
@@ -36,10 +43,9 @@ class ResPartner(models.Model):
         ],
         string="Lead Status",
     )
-    tech_stack_ids = fields.Many2many(
-        'tech.stack',
-        string="Area (Techstack)"
-    )
+    tech_stack_ids = fields.Many2many("tech.stack", string="Area (Techstack)")
+    email = fields.Char(string="Email", required=True)
+    website = fields.Char(string="Website")
 
     @api.model
     def message_get_reply_to(self):
@@ -51,6 +57,59 @@ class ResPartner(models.Model):
         for record in self:
             record.last_modified_date = record.write_date
 
+    @api.depends("message_ids.date")
+    def _compute_last_activity_date(self):
+        for record in self:
+            messages = record.message_ids.filtered(lambda m: m.message_type == "email")
+            if messages:
+                record.last_activity_date = max(messages.mapped("date"))
+            else:
+                record.last_activity_date = False
+
+    @api.constrains("email", "website")
+    def _check_unique_email_website(self):
+        for record in self:
+            # Check duplicate email
+            if record.email:
+                existing_email = self.env["res.partner"].search(
+                    [("email", "=", record.email), ("id", "!=", record.id)], limit=1
+                )
+                if existing_email:
+                    # Send warning notification to frontend
+                    self.env["bus.bus"]._sendone(
+                        self.env.user.partner_id,
+                        "simple_notification",
+                        {
+                            "title": "Duplicate Email Detected",
+                            "message": f"The email '{record.email}' is already in use.",
+                            "type": "warning",  # Types: success, warning, danger, info
+                        },
+                    )
+                    # Raise ValidationError to stop creation
+                    raise ValidationError(
+                        f"The email '{record.email}' is already in use. Please use a unique email."
+                    )
+
+            # Check duplicate website
+            if record.website:
+                existing_website = self.env["res.partner"].search(
+                    [("website", "=", record.website), ("id", "!=", record.id)], limit=1
+                )
+                if existing_website:
+                    # Send warning notification to frontend
+                    self.env["bus.bus"]._sendone(
+                        self.env.user.partner_id,
+                        "simple_notification",
+                        {
+                            "title": "Duplicate Website Detected",
+                            "message": f"The website '{record.website}' is already in use.",
+                            "type": "warning",
+                        },
+                    )
+                    # Raise ValidationError to stop creation
+                    raise ValidationError(
+                        f"The website '{record.website}' is already in use. Please use a unique website."
+                    )
     def action_open_mail_composer(self):
         self.ensure_one()
         # Get the current user's formatted email
