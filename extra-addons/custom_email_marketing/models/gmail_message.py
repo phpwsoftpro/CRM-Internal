@@ -36,7 +36,7 @@ class GmailMessage(models.Model):
             "client_secret": "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",
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uri": "http://localhost:8090/odoo/gmail/auth/callback",
+            "redirect_uri": "http://localhost:8070/odoo/gmail/auth/callback",
         }
 
     @api.model
