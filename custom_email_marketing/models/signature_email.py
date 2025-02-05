@@ -104,7 +104,10 @@ class MailComposer(models.TransientModel):
 
 class MassMailing(models.Model):
     _inherit = "mailing.mailing"
-
+    contact_list_ids = fields.Many2many(
+        'mailing.list', 
+        string='Contact Lists'
+    )
     def _get_user_signature(self, user):
         """Get unified HTML signature"""
         return self.env["mail.compose.message"]._get_user_signature(user)

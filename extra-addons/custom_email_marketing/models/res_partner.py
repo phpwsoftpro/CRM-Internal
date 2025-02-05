@@ -37,9 +37,13 @@ class ResPartner(models.Model):
     lead_status = fields.Selection(
         [
             ("new", "New"),
+            ("open", "Open"),
             ("in_progress", "In Progress"),
-            ("won", "Won"),
-            ("lost", "Lost"),
+            ("open_deal", "Open Deal"),
+            ("unqualified", "Unqualified"),
+            ("attempted_to_contact", "Attempted to Contact"),
+            ("connected", "Connected"),
+            ("bad_timing", "Bad Timing"),
         ],
         string="Lead Status",
     )
