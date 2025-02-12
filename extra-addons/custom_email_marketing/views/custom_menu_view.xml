@@ -7,16 +7,16 @@
         <field name="arch" type="xml">
             <list string="Contacts">
                 <field name="name"/>
-               <field name="company_id" string="Company" widget="many2one"/>
+                <field name="parent_id" string="Company"/>
                 <field name="email" string="Email"/>
-                <field name="last_activity_date" string="Last Activity Date (GMT+7)"/>
-                <field name="create_date" string="Create Date (GMT+7)"/>
+                <field name="last_activity_date" string="Last Email Activity"/>
+                <field name="create_date" string="Create Date" widget="datetime"/>
                 <field name="tech_stack_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
             </list>
         </field>
     </record>
 
-    <!-- List View for Companies -->
+    <!-- List View for Companies -->    
     <record id="view_res_partner_companies_list" model="ir.ui.view">
         <field name="name">view.company.list.custom</field>
         <field name="model">res.partner</field>
