@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_send_task_email_wizard" model="ir.ui.view">
+        <field name="name">send.task.email.wizard.form</field>
+        <field name="model">send.task.email.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Gửi Email Mới">
+                <group>
+                    <field name="email_to"/>
+                    <field name="email_subject"/>
+                    <field name="message_id" placeholder="Nhập Message-ID từ Gmail (nếu reply)"/>
+                    <field name="attachment_ids" widget="many2many_binary" string="Attachment"/>
+                    <field name="body_html" widget="mail_html"/>
+                </group>
+                <footer>
+                    <button name="send_email" string="Send" type="object" class="btn-primary"/>
+                    <button string="Discard" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

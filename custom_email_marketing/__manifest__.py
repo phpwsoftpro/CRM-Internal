@@ -20,7 +20,15 @@
         # "views/data/cron_job_data.xml",
         # "views/discuss_custom_button.xml",
         "views/discuss_view.xml",
+        "views/project_task_view.xml",
+        "views/send_task_email_wizard_view.xml",
+        "wizards/project_task_move_views.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "custom_email_marketing/static/src/css/custom.css",
+        ],
+    },
     "installable": True,
     "auto_install": False,
     "application": True,
