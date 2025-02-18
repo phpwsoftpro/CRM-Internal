@@ -2,44 +2,32 @@ from odoo import http
 from odoo.http import request
 import json
 import logging
-import requests
+import base64
 
 _logger = logging.getLogger(__name__)
 
 
-def create_gmail_webhook():
-    access_token = "YOUR_ACCESS_TOKEN"
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json",
-    }
-    data = {
-        "labelIds": ["INBOX"],
-        "topicName": "projects/YOUR_PROJECT_ID/topics/YOUR_TOPIC_NAME",
-    }
-    response = requests.post(
-        "https://gmail.googleapis.com/gmail/v1/users/me/watch",
-        headers=headers,
-        json=data,
-    )
-    return response.json()
-
-
 class GmailWebhookController(http.Controller):
-    @http.route("/gmail/webhook", type="json", auth="public", csrf=False)
+
+    @http.route(
+        "/gmail/webhook", type="json", auth="public", methods=["POST"], csrf=False
+    )
     def gmail_webhook(self, **kwargs):
-        _logger.info("Webhook received: %s", json.dumps(kwargs))
+        """
+        Nhận thông báo từ Gmail Webhook khi có email mới.
+        """
+        _logger.info("Nhận Webhook từ Gmail: %s", json.dumps(kwargs))
 
-        # Xác minh webhook
+        # Xác minh dữ liệu từ Google
         if "message" not in kwargs:
-            _logger.info("Verification request received from Google Pub/Sub.")
-            return {"status": "verified"}
+            return {"status": "no_message"}
 
-        # Lấy message ID từ webhook
-        message_id = kwargs["message"]["data"]  # Thường được mã hóa base64
-        _logger.info("New Gmail message ID: %s", message_id)
+        # Lấy Message ID từ dữ liệu Gmail
+        message_id_encoded = kwargs["message"]["data"]
+        message_id = base64.urlsafe_b64decode(message_id_encoded).decode("utf-8")
+        _logger.info("New Gmail Message ID: %s", message_id)
 
-        # Giải mã và xử lý message
+        # Fetch email từ Gmail API
         access_token = (
             request.env["ir.config_parameter"].sudo().get_param("gmail_access_token")
         )
