@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_mailing_list_inherit" model="ir.ui.view">
+        <field name="name">mailing.mailing.list.inherit</field>
+        <field name="model">mailing.mailing</field>
+        <field name="inherit_id" ref="mass_mailing.view_mail_mass_mailing_tree"/>
+        <field name="arch" type="xml">
+            <field name="subject" position="after">
+                <field name="contact_list_ids" widget="many2many_tags" string="Contact List"/>
+            </field>
+        </field>
+    </record>
+</odoo>

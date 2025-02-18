@@ -14,12 +14,21 @@
         "security/ir.model.access.csv",  # File CSV chứa quyền truy cập
         "views/custom_menu_view.xml",
         "views/form_view_company.xml",
+        "views/mailing_view_inherit.xml",
         "views/data/tech_stack_data.xml",
         "views/custom_send_email_template.xml",
         # "views/data/cron_job_data.xml",
         # "views/discuss_custom_button.xml",
         "views/discuss_view.xml",
+        "views/project_task_view.xml",
+        "views/send_task_email_wizard_view.xml",
+        "wizards/project_task_move_views.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "custom_email_marketing/static/src/css/custom.css",
+        ],
+    },
     "installable": True,
     "auto_install": False,
     "application": True,
