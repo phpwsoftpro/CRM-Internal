@@ -4,35 +4,35 @@ from datetime import datetime, timedelta
 class ProjectTask(models.Model):
     _inherit = 'project.task'
 
-    # remaining_days = fields.Char(string="Remaining Time", compute="_compute_remaining_days")
-    # priority = fields.Selection([
-    #     ('0', 'Low'),
-    #     ('1', 'Normal'),
-    #     ('2', 'Medium'),
-    #     ('3', 'High')
-    # ], string="Priority", default='1')
+    remaining_days = fields.Char(string="Remaining Time", compute="_compute_remaining_days")
+    priority = fields.Selection([
+        ('0', 'Low'),
+        ('1', 'Normal'),
+        ('2', 'Medium'),
+        ('3', 'High')
+    ], string="Priority", default='1')
     has_new_log = fields.Boolean(string="New Log Note", default=False)
     new_log_count = fields.Integer(string="New Log Note Count", default=0)
-    # @api.depends('date_deadline')
-    # def _compute_remaining_days(self):
-    #     for task in self:
-    #         if task.date_deadline:
-    #             # Chuyển đổi deadline sang datetime với timezone của hệ thống
-    #             deadline = fields.Datetime.to_datetime(task.date_deadline)
+    @api.depends('date_deadline')
+    def _compute_remaining_days(self):
+        for task in self:
+            if task.date_deadline:
+                # Chuyển đổi deadline sang datetime với timezone của hệ thống
+                deadline = fields.Datetime.to_datetime(task.date_deadline)
 
-    #             # Chuyển deadline sang timezone của user
-    #             deadline = fields.Datetime.context_timestamp(task, deadline)
+                # Chuyển deadline sang timezone của user
+                deadline = fields.Datetime.context_timestamp(task, deadline)
 
-    #             # Lấy thời gian hiện tại theo timezone của user
-    #             now = fields.Datetime.context_timestamp(task, fields.Datetime.now())
+                # Lấy thời gian hiện tại theo timezone của user
+                now = fields.Datetime.context_timestamp(task, fields.Datetime.now())
 
-    #             # Tính khoảng cách thời gian
-    #             remaining = deadline - now
+                # Tính khoảng cách thời gian
+                remaining = deadline - now
 
-    #             # Format lại hiển thị
-    #             task.remaining_days = f"{remaining.days} days → {deadline.strftime('%I:%M%p %d/%m/%Y')}"
-    #         else:
-    #             task.remaining_days = "No Deadline"
+                # Format lại hiển thị
+                task.remaining_days = f"{remaining.days} days → {deadline.strftime('%I:%M%p %d/%m/%Y')}"
+            else:
+                task.remaining_days = "No Deadline"
     def action_move_to_project(self):
         return {
             'name': 'Move Task to Another Project',

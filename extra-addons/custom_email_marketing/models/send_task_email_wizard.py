@@ -24,7 +24,7 @@ class SendTaskEmailWizard(models.TransientModel):
                         <img src="/web/image/res.company/{company.id}/logo" alt="{company.name}" style="width: 120px; height: auto;"/>
                     </td>
                     <td style="vertical-align: top;">
-                        <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">{user.name}</div>
+                        <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">Vanessa Ha</div>
                         <div style="color: #4CAF50; margin-bottom: 5px;">Nhân viên</div>
                         <div style="margin-bottom: 10px;">{company.name}</div>
                         
