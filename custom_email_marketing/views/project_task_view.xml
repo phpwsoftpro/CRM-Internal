@@ -43,7 +43,7 @@
         <field name="inherit_id" ref="project.view_task_kanban"/>
         <field name="arch" type="xml">
             <field name="priority" position="replace">
-                <field name="priority" widget="priority" options="{'colors': {'0': 'grey', '1': 'blue', '2': 'orange', '3': 'red'}}"/>
+                <field name="priority" widget="priority" options="{'colors': {'0': 'grey', '1': 'blue', '2': 'orange'}}"/>
             </field>
         </field>
     </record>

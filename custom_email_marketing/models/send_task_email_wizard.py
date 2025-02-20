@@ -25,14 +25,14 @@ class SendTaskEmailWizard(models.TransientModel):
                     </td>
                     <td style="vertical-align: top;">
                         <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">Vanessa Ha</div>
-                        <div style="color: #4CAF50; margin-bottom: 5px;">Nhân viên</div>
+                        <div style="color: #4CAF50; margin-bottom: 5px;">Project Manager</div>
                         <div style="margin-bottom: 10px;">{company.name}</div>
                         
                         <div style="margin: 4px 0;">
-                            <span style="color: #666;">📞</span> {user.phone or ''}
+                            <span style="color: #666;">📞</span> (+84) 393 558 941
                         </div>
                         <div style="margin: 4px 0;">
-                            <span style="color: #666;">✉️</span> {user.email or ''}
+                            <span style="color: #666;">✉️</span> vanessa@wsoftpro.com
                         </div>
                         <div style="margin: 4px 0;">
                             <span style="color: #666;">🌐</span> {company.website or ''}

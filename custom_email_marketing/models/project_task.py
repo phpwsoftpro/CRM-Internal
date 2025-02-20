@@ -7,9 +7,8 @@ class ProjectTask(models.Model):
     remaining_days = fields.Char(string="Remaining Time", compute="_compute_remaining_days")
     priority = fields.Selection([
         ('0', 'Low'),
-        ('1', 'Normal'),
-        ('2', 'Medium'),
-        ('3', 'High')
+        ('1', 'Medium'),
+        ('2', 'High')
     ], string="Priority", default='1')
     has_new_log = fields.Boolean(string="New Log Note", default=False)
     new_log_count = fields.Integer(string="New Log Note Count", default=0)
