@@ -2,6 +2,6 @@ from . import signature_email
 from . import res_partner
 from . import tech_stack
 
+# from . import chatter_filter
 from . import gmail_message
 from . import industries
-

@@ -12,7 +12,7 @@ class ResPartner(models.Model):
 
     last_activity_date = fields.Datetime(
         string="Last Email Activity",
-        compute="_compute_last_email_activity",
+        compute="_compute_last_activity_date",
         store=True,
         help="Date of last email sent to this contact",
     )
@@ -62,9 +62,9 @@ class ResPartner(models.Model):
         return reply_to
 
     @api.depends("write_date")
-    def _compute_last_modified_date(self):
+    def _compute_last_activity_date(self):
         for record in self:
-            record.last_modified_date = record.write_date
+            record.last_activity_date = record.write_date
 
     @api.constrains("email", "website")
     def _check_unique_email_website(self):
@@ -140,5 +140,3 @@ class ResPartner(models.Model):
             "target": "new",
             "context": ctx,
         }
-
-

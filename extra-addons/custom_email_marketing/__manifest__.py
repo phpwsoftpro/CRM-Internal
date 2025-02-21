@@ -8,8 +8,15 @@
     "depends": [
         "base",
         "mail",
-        "mass_mailing",  # assuming you need this based on your menus
+        "mass_mailing",
+        "project",
+        "web",  # assuming you need this based on your menus
     ],
+    "assets": {
+        "web.assets_backend": [
+            # "custom_email_marketing/static/src/js/chatter_filter.js",
+        ],
+    },
     "data": [
         "security/ir.model.access.csv",  # File CSV chứa quyền truy cập
         "views/custom_menu_view.xml",
@@ -17,9 +24,8 @@
         "views/mailing_view_inherit.xml",
         "views/data/tech_stack_data.xml",
         "views/custom_send_email_template.xml",
-        # "views/data/cron_job_data.xml",
-        # "views/discuss_custom_button.xml",
         "views/discuss_view.xml",
+        # "views/chatter_filter.xml",
     ],
     "installable": True,
     "auto_install": False,
