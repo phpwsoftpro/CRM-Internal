@@ -26,7 +26,15 @@
         "views/custom_send_email_template.xml",
         "views/discuss_view.xml",
         # "views/chatter_filter.xml",
+        "views/project_task_view.xml",
+        "views/send_task_email_wizard_view.xml",
+        "wizards/project_task_move_views.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "custom_email_marketing/static/src/css/custom.css",
+        ],
+    },
     "installable": True,
     "auto_install": False,
     "application": True,

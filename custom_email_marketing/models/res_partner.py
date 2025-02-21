@@ -13,7 +13,6 @@ class ResPartner(models.Model):
     last_activity_date = fields.Datetime(
         string="Last Email Activity",
         compute="_compute_last_activity_date",
-        store=True,
         help="Date of last email sent to this contact",
     )
 
