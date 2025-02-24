@@ -12,6 +12,13 @@ class ProjectTask(models.Model):
     ], string="Priority", default='1')
     has_new_log = fields.Boolean(string="New Log Note", default=False)
     new_log_count = fields.Integer(string="New Log Note Count", default=0)
+    connected_task_ids = fields.Many2many(
+        'project.task',
+        'project_task_connection_rel',
+        'task_id',
+        'connected_task_id',
+        string='Connected Tasks'
+    )
     @api.depends('date_deadline')
     def _compute_remaining_days(self):
         for task in self:
@@ -90,4 +97,7 @@ class ProjectTask(models.Model):
             'res_model': wizard_model._name,  # Sử dụng model name từ Odoo ORM
             'view_mode': 'form',
             'target': 'new',
+            'context': {
+                'default_email_to': self.partner_id.email,  # Điền email khách hàng
+            }
         }

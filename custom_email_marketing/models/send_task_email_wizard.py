@@ -7,7 +7,7 @@ class SendTaskEmailWizard(models.TransientModel):
 
     email_to = fields.Char(string="To", required=True)
     email_subject = fields.Char(string="Subject", required=True)
-    body_html = fields.Html(string="Body", required=True, sanitize=True) 
+    body_html = fields.Html(string="Body", required=True, sanitize=False) 
     message_id = fields.Char(string="Message-ID", help="Nhập Message-ID từ Gmail khi reply")
     attachment_ids = fields.Many2many('ir.attachment', string="File đính kèm")
 
@@ -18,27 +18,28 @@ class SendTaskEmailWizard(models.TransientModel):
 
         signature_template = f"""
         <div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #e5e5e5;">
-            <table cellpadding="0" cellspacing="0" style="font-family: Arial, sans-serif; color: #333333; width: 100%; max-width: 600px;">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+            <table cellpadding="0" cellspacing="0" style="font-family: Poppins, sans-serif; color: #333333; width: 100%; max-width: 600px;">
                 <tr>
                     <td style="width: 150px; vertical-align: top; padding-right: 20px;">
                         <img src="/web/image/res.company/{company.id}/logo" alt="{company.name}" style="width: 120px; height: auto;"/>
                     </td>
                     <td style="vertical-align: top;">
-                        <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">Vanessa Ha</div>
-                        <div style="color: #4CAF50; margin-bottom: 5px;">Project Manager</div>
-                        <div style="margin-bottom: 10px;">{company.name}</div>
-                        
+                        <div style="font-size: 18px; font-weight: 650; margin-bottom: 5px;">Vanessa Ha</div>
+                        <div style="color: black; margin-bottom: 5px; font-size: 15px; font-weight: 500;">Project Manager</div>
+                        <div style="margin-bottom: 10px; font-weight: 600;">WSOFTPRO</div>
+                        <hr />
                         <div style="margin: 4px 0;">
-                            <span style="color: #666;">📞</span> (+84) 393 558 941
+                            <span>📞</span> <a href="tel:+84393558941" style="color: black; margin-left: 10px; font-size: 15px;">(+84) 393 558 941</a>
                         </div>
                         <div style="margin: 4px 0;">
-                            <span style="color: #666;">✉️</span> vanessa@wsoftpro.com
+                            <span>✉️</span> <a href="mailto:vanessa@wsoftpro.com" style="color: black; margin-left: 10px; font-size: 15px;">vanessa@wsoftpro.com</a>
                         </div>
                         <div style="margin: 4px 0;">
-                            <span style="color: #666;">🌐</span> {company.website or ''}
+                            <span>🌐</span> <a href="https://wsoftpro.com/" target="_blank" style="color: black; margin-left: 10px; font-size: 15px;">https://wsoftpro.com/</a>
                         </div>
                         <div style="margin: 4px 0;">
-                            <span style="color: #666;">📍</span> {company.street or ''} {company.street2 or ''}, {company.city or ''}, {company.country_id.name or ''}
+                            <span>📍</span> <span style="color: black; margin-left: 10px; font-size: 15px;">7/26 Nguyen Hong, Dong Da, Hanoi, Vietnam</span>
                         </div>
                     </td>
                 </tr>
@@ -49,8 +50,11 @@ class SendTaskEmailWizard(models.TransientModel):
 
     @api.model
     def default_get(self, fields_list):
-        """Lấy chữ ký mặc định khi mở wizard"""
+        """Lấy mặc định Customer email khi mở wizard"""
         res = super(SendTaskEmailWizard, self).default_get(fields_list)
+        if 'default_email_to' in self.env.context:
+            res['email_to'] = self.env.context.get('default_email_to')
+        
         signature = self._get_signature_template()
         res['body_html'] = f"<p><br/></p>{signature}"
         return res
@@ -60,6 +64,10 @@ class SendTaskEmailWizard(models.TransientModel):
         if not self.email_to:
             raise UserError("Vui lòng nhập địa chỉ email người nhận!")
 
+        task = self.env['project.task'].browse(self.env.context.get('active_id'))
+        attachment_ids = self.attachment_ids.ids if self.attachment_ids else []
+
+        # Xác định headers nếu là email phản hồi
         headers = {}
         if self.message_id:
             headers['In-Reply-To'] = f"<{self.message_id}>"
@@ -72,8 +80,13 @@ class SendTaskEmailWizard(models.TransientModel):
             'email_from': self.env.user.email or 'no-reply@example.com',
             'reply_to': self.env.user.email,
             'headers': headers,
-            'attachment_ids': [(6, 0, self.attachment_ids.ids)],
+            'attachment_ids': [(6, 0, attachment_ids)] if attachment_ids else [],
         }
-        
+
         mail = self.env['mail.mail'].create(mail_values)
         mail.send()
+        if task:
+            task.message_post(
+                body=f"📧 Email sent to: {self.email_to}\nSubject: {self.email_subject}",
+                subtype_xmlid="mail.mt_note",
+            )
