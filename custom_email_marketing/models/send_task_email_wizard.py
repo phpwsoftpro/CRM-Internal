@@ -1,6 +1,20 @@
 from odoo import models, fields, api
 from odoo.exceptions import UserError
 
+class TaskEmailHistory(models.Model):
+    _name = 'task.email.history'
+    _description = 'Store last email details per task'
+    
+    task_id = fields.Many2one('project.task', string="Task", required=True)
+    user_id = fields.Many2one('res.users', string="User", required=True)
+    last_subject = fields.Char(string="Last Subject")
+    last_message_id = fields.Char(string="Last Message-ID")
+    
+    _sql_constraints = [
+        ('task_user_unique', 'unique(task_id, user_id)', 'Only one email history per task and user is allowed!')
+    ]
+
+
 class SendTaskEmailWizard(models.TransientModel):
     _name = 'send.task.email.wizard'
     _description = 'Wizard gửi email mới cho Task'
@@ -10,6 +24,7 @@ class SendTaskEmailWizard(models.TransientModel):
     body_html = fields.Html(string="Body", required=True, sanitize=False) 
     message_id = fields.Char(string="Message-ID", help="Nhập Message-ID từ Gmail khi reply")
     attachment_ids = fields.Many2many('ir.attachment', string="File đính kèm")
+    task_id = fields.Many2one('project.task', string="Related Task")
 
     def _get_signature_template(self):
         """Generate HTML signature template for current user"""
@@ -50,17 +65,36 @@ class SendTaskEmailWizard(models.TransientModel):
 
     @api.model
     def default_get(self, fields_list):
-        """Lấy mặc định Customer email khi mở wizard"""
+        """Lấy mặc định Customer email khi mở wizard và lưu trữ thông tin email theo task"""
         res = super(SendTaskEmailWizard, self).default_get(fields_list)
+        
+        # Get the current task ID
+        active_id = self.env.context.get('active_id')
+        if active_id:
+            res['task_id'] = active_id
+            
+            # Get last email data for this task and user
+            email_history = self.env['task.email.history'].search([
+                ('task_id', '=', active_id),
+                ('user_id', '=', self.env.user.id)
+            ], limit=1)
+            
+            if email_history:
+                res['email_subject'] = email_history.last_subject
+                res['message_id'] = email_history.last_message_id
+        
+        # Default email recipient
         if 'default_email_to' in self.env.context:
             res['email_to'] = self.env.context.get('default_email_to')
         
+        # Default signature
         signature = self._get_signature_template()
         res['body_html'] = f"<p><br/></p>{signature}"
+        
         return res
 
     def send_email(self):
-        """Gửi email phản hồi theo Message-ID nhập từ Gmail"""
+        """Gửi email phản hồi theo Message-ID nhập từ Gmail và lưu thông tin gửi"""
         if not self.email_to:
             raise UserError("Vui lòng nhập địa chỉ email người nhận!")
 
@@ -85,7 +119,29 @@ class SendTaskEmailWizard(models.TransientModel):
 
         mail = self.env['mail.mail'].create(mail_values)
         mail.send()
+        
+        # Save the email details for this task
         if task:
+            email_history = self.env['task.email.history'].search([
+                ('task_id', '=', task.id),
+                ('user_id', '=', self.env.user.id)
+            ], limit=1)
+            
+            history_vals = {
+                'last_subject': self.email_subject,
+                'last_message_id': self.message_id,
+            }
+            
+            if email_history:
+                email_history.write(history_vals)
+            else:
+                self.env['task.email.history'].create({
+                    'task_id': task.id,
+                    'user_id': self.env.user.id,
+                    **history_vals
+                })
+            
+            # Post message in the chatter
             task.message_post(
                 body=f"📧 Email sent to: {self.email_to}\nSubject: {self.email_subject}",
                 subtype_xmlid="mail.mt_note",
