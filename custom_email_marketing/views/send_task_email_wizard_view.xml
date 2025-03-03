@@ -14,6 +14,7 @@
                 </group>
                 <footer>
                     <button name="send_email" string="Send" type="object" class="btn-primary"/>
+                     <button name="save_draft" string="Lưu tạm" type="object" class="btn-secondary"/>
                     <button string="Discard" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
