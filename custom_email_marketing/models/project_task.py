@@ -1,6 +1,7 @@
 from odoo import models, fields, api
 from datetime import datetime, timedelta
-
+import logging
+_logger = logging.getLogger(__name__)
 class ProjectTask(models.Model):
     _inherit = 'project.task'
 
@@ -19,6 +20,30 @@ class ProjectTask(models.Model):
         'connected_task_id',
         string='Connected Tasks'
     )
+    cover_image = fields.Binary("Cover Image")
+    @api.model
+    def create(self, vals):
+        record = super(ProjectTask, self).create(vals)
+        if 'cover_image' in vals and vals.get('cover_image'):
+            attachment = self.env['ir.attachment'].browse(vals['cover_image'])
+            if attachment.exists():
+                record.message_post(                                                                                                    
+                    body="Cover image set",
+                    attachment_ids=[(4, attachment.id)]
+                )
+        return record
+    
+    def write(self, vals):
+        result = super(ProjectTask, self).write(vals)
+        for record in self:
+            if 'cover_image' in vals and vals.get('cover_image'):
+                attachment = self.env['ir.attachment'].browse(vals['cover_image'])
+                if attachment.exists():
+                    record.message_post(
+                        body="Cover image updated",
+                        attachment_ids=[(4, attachment.id)]
+                    )
+        return result
     @api.depends('date_deadline')
     def _compute_remaining_days(self):
         for task in self:
@@ -50,7 +75,7 @@ class ProjectTask(models.Model):
         }
     def message_post(self, **kwargs):
         """Override message_post to track new log notes"""
-        message = super().message_post(**kwargs)
+        message = super(ProjectTask, self).message_post(**kwargs)
         
         # Check if this is a note (not a regular comment)
         if (kwargs.get('message_type') == 'comment' and 
@@ -66,9 +91,38 @@ class ProjectTask(models.Model):
                     'has_new_log': True,
                     'new_log_count': self.new_log_count + 1
                 })
-        
-        return message
 
+        if message and message.attachment_ids:
+            # Filter to get only image attachments
+            image_attachments = message.attachment_ids.filtered(
+                lambda a: a.mimetype and a.mimetype.startswith('image/')
+            )
+            
+            # Make sure we have at least one image
+            if image_attachments and not self.cover_image:
+                # Get the first image attachment only
+                first_image = image_attachments[0]
+                
+                # Try different field names that might be used for the Kanban card image
+                try:
+                    # Option 1: displayed_image_id (Odoo 14+)
+                    if hasattr(self, 'displayed_image_id'):
+                        self.sudo().write({'displayed_image_id': first_image.id})
+                    
+                    # Option 2: kanban_image (some custom implementations)
+                    elif hasattr(self, 'kanban_image'):
+                        self.sudo().write({'kanban_image': first_image.id})
+                    
+                    # Option 3: cover_image as a binary field
+                    elif hasattr(self, 'cover_image'):
+                        self.sudo().write({'cover_image': first_image.datas})
+                    
+                    # Option 4: For Odoo 15+, preview_image field
+                    elif hasattr(self, 'preview_image'):
+                        self.sudo().write({'preview_image': first_image.datas})
+                except Exception as e:
+                    _logger.error("Error setting task image: %s", str(e))
+        return message
     def action_view_task(self):
         """Action to view task and reset notification"""
         self.ensure_one()

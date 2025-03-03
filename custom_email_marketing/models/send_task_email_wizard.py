@@ -7,6 +7,7 @@ class TaskEmailHistory(models.Model):
     
     task_id = fields.Many2one('project.task', string="Task", required=True)
     user_id = fields.Many2one('res.users', string="User", required=True)
+    last_email_to = fields.Char(string="Last Recipient Email")  # 🆕 Thêm trường này
     last_subject = fields.Char(string="Last Subject")
     last_message_id = fields.Char(string="Last Message-ID")
     
@@ -80,6 +81,7 @@ class SendTaskEmailWizard(models.TransientModel):
             ], limit=1)
             
             if email_history:
+                res['email_to'] = email_history.last_email_to 
                 res['email_subject'] = email_history.last_subject
                 res['message_id'] = email_history.last_message_id
         
@@ -92,7 +94,42 @@ class SendTaskEmailWizard(models.TransientModel):
         res['body_html'] = f"<p><br/></p>{signature}"
         
         return res
+    def save_draft(self):
+        """Lưu tạm thời Subject và Message-ID mà không gửi email"""
+        task = self.env['project.task'].browse(self.env.context.get('active_id'))
+        
+        if not task:
+            raise UserError("Không tìm thấy Task để lưu tạm!")
 
+        email_history = self.env['task.email.history'].search([
+            ('task_id', '=', task.id),
+            ('user_id', '=', self.env.user.id)
+        ], limit=1)
+        
+        history_vals = {
+            'last_subject': self.email_subject,
+            'last_message_id': self.message_id,
+        }
+
+        if email_history:
+            email_history.write(history_vals)
+        else:
+            self.env['task.email.history'].create({
+                'task_id': task.id,
+                'user_id': self.env.user.id,
+                **history_vals
+            })
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Lưu thành công!',
+                'message': 'Email subject và Message-ID đã được lưu tạm thời.',
+                'type': 'success',
+                'sticky': False,
+            }
+        }
     def send_email(self):
         """Gửi email phản hồi theo Message-ID nhập từ Gmail và lưu thông tin gửi"""
         if not self.email_to:
@@ -141,8 +178,25 @@ class SendTaskEmailWizard(models.TransientModel):
                     **history_vals
                 })
             
-            # Post message in the chatter
-            task.message_post(
-                body=f"📧 Email sent to: {self.email_to}\nSubject: {self.email_subject}",
-                subtype_xmlid="mail.mt_note",
-            )
+            # Create a mail.message directly instead of using message_post
+            self.env['mail.message'].create({
+                'body': f"""
+                    <div>
+                        <div style="margin-top: 15px; border-top: 1px solid #ddd; padding-top: 15px;">
+                            {self.body_html}
+                        </div>
+                        {f'<div style="margin-top: 10px;"><strong>Attachments:</strong> {len(attachment_ids)} files</div>' if attachment_ids else ''}
+                    </div>
+                """,
+                'subject': self.email_subject,
+                'message_type': 'comment',
+                'subtype_id': self.env.ref('mail.mt_comment').id,
+                'model': 'project.task',
+                'res_id': task.id,
+                'author_id': self.env.user.partner_id.id,
+                'email_from': self.env.user.email,
+                'attachment_ids': [(6, 0, attachment_ids)] if attachment_ids else [],
+                'date': fields.Datetime.now(),
+            })
+            
+            return {'type': 'ir.actions.act_window_close'}

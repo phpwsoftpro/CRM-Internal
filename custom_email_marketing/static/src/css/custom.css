@@ -4,3 +4,13 @@
 .o-we-hint{
     height: 150px;
 }
+.modal:not([data-bs-backdrop="false"]) {
+    background-color: transparent !important;
+}
+.o_dialog {
+    pointer-events: none !important;
+}
+
+.o_dialog .modal-content {
+    pointer-events: auto !important;
+}
