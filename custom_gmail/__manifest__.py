@@ -1,0 +1,22 @@
+{
+    'name': 'Custom Discuss Gmail Integration',
+    'version': '1.0',
+    'summary': 'Extend Discuss module with Gmail inbox integration',
+    'description': 'Fetch and display Gmail inbox messages in the Discuss module',
+    'author': 'Your Name',
+    'website': 'https://crm2.wsoftpro.com',
+    'category': 'Communication',
+    'depends': ['mail'],
+    'data': [
+        'views/discuss_view.xml',
+
+    ],
+    'assets': {
+        'web.assets_backend': [
+            'custom_gmail/static/src/css/gmail_inbox.css',
+            'custom_gmail/static/src/js/gmail_inbox.js',
+        ]
+    },
+    'installable': True,
+    'application': False,
+}
