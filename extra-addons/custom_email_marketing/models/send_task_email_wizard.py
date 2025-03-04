@@ -17,8 +17,8 @@ class TaskEmailHistory(models.Model):
 
 
 class SendTaskEmailWizard(models.TransientModel):
-    _name = 'send.task.email.wizard'
-    _description = 'Wizard gửi email mới cho Task'
+    _name = "send.task.email.wizard"
+    _description = "Wizard gửi email mới cho Task"
 
     email_to = fields.Char(string="To", required=True)
     email_subject = fields.Char(string="Subject", required=True)
@@ -141,8 +141,8 @@ class SendTaskEmailWizard(models.TransientModel):
         # Xác định headers nếu là email phản hồi
         headers = {}
         if self.message_id:
-            headers['In-Reply-To'] = f"<{self.message_id}>"
-            headers['References'] = f"<{self.message_id}>"
+            headers["In-Reply-To"] = f"<{self.message_id}>"
+            headers["References"] = f"<{self.message_id}>"
 
         mail_values = {
             'subject': self.email_subject,

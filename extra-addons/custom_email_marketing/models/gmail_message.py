@@ -32,8 +32,8 @@ class GmailMessage(models.Model):
         """
         _logger.debug("Loading Google API configuration.")
         return {
-            "client_id": "934598997197-13d2tluslcltooi7253r1s1rkafj601h.apps.googleusercontent.com",
-            "client_secret": "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",
+            "client_id": "783326872152-65uquerllc2l7eum712o5lqn23uceio8.apps.googleusercontent.com",
+            "client_secret": "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",
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
             "redirect_uri": "http://localhost:8070/odoo/gmail/auth/callback",
@@ -91,11 +91,40 @@ class GmailMessage(models.Model):
         _logger.error("Failed to parse date: %s. Tried formats: %s", raw_date, formats)
         return None
 
+
+import requests
+import logging
+from datetime import datetime
+from odoo import models, fields, api, _
+
+_logger = logging.getLogger(__name__)
+
+
+class GmailMessage(models.Model):
+    _inherit = "mail.message"
+
+    gmail_id = fields.Char(string="Gmail ID", index=True)
+    gmail_snippet = fields.Text(string="Snippet")
+    is_gmail = fields.Boolean(string="Is Gmail Message", default=False)
+    date_received = fields.Datetime(string="Date Received")
+
+    @api.model
+    def parse_date(self, raw_date):
+        """
+        Parse date string to a standard datetime format.
+        """
+        from email.utils import parsedate_to_datetime
+
+        try:
+            return parsedate_to_datetime(raw_date).astimezone()
+        except Exception as e:
+            _logger.error("Failed to parse date: %s. Error: %s", raw_date, str(e))
+            return None
+
     @api.model
     def fetch_gmail_messages(self, access_token):
         """
-        Fetch the latest 10 Gmail messages via Gmail API and save them in `mail.message`.
-        Returns the list of Gmail message data for further processing.
+        Fetch the latest 10 Gmail messages via Gmail API and save them in Discuss Inbox.
         """
         _logger.debug("Fetching Gmail messages with access token.")
         url = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
@@ -113,7 +142,24 @@ class GmailMessage(models.Model):
         messages = response.json().get("messages", [])
         _logger.info("Number of Gmail messages fetched: %s", len(messages))
 
-        processed_messages = []  # List to store processed messages
+        # Tìm hoặc tạo channel "Inbox" trong Discuss
+        discuss_channel = (
+            self.env["discuss.channel"].sudo().search([("name", "=", "Inbox")], limit=1)
+        )
+        if not discuss_channel:
+            _logger.debug("Creating Discuss Inbox channel.")
+            discuss_channel = (
+                self.env["discuss.channel"]
+                .sudo()
+                .create(
+                    {
+                        "name": "Inbox",
+                        "channel_type": "chat",
+                    }
+                )
+            )
+
+        processed_messages = []
 
         for msg in messages:
             gmail_id = msg.get("id")
@@ -147,7 +193,7 @@ class GmailMessage(models.Model):
                     None,
                 )
 
-                # Parse date using the improved parse_date method
+                # Parse date using parse_date method
                 date_received = self.parse_date(raw_date) if raw_date else None
 
                 # Avoid duplicates by checking `gmail_id`
@@ -155,7 +201,7 @@ class GmailMessage(models.Model):
                     _logger.info(
                         "Creating a new mail.message record for Gmail ID: %s", gmail_id
                     )
-                    self.create(
+                    created_message = self.create(
                         {
                             "gmail_id": gmail_id,
                             "gmail_snippet": snippet,
@@ -164,21 +210,50 @@ class GmailMessage(models.Model):
                             "subject": subject,
                             "date_received": date_received,
                             "message_type": "email",
+                            "model": "discuss.channel",  # Gắn vào channel
+                            "res_id": discuss_channel.id,  # Liên kết với Inbox channel
                             "author_id": self.env.user.partner_id.id,
                         }
                     )
-
-                # Append processed message data for further use
-                processed_messages.append(
-                    {
-                        "id": gmail_id,
-                        "snippet": snippet,
-                        "subject": subject,
-                        "date_received": date_received,
-                    }
-                )
+                    # Append processed message
+                    processed_messages.append(
+                        {
+                            "id": gmail_id,
+                            "snippet": snippet,
+                            "subject": subject,
+                            "date_received": date_received,
+                        }
+                    )
 
         return processed_messages
+
+    @api.model
+    def scheduled_gmail_sync(self):
+        """
+        Scheduled action to fetch Gmail messages periodically.
+        """
+        _logger.debug("Scheduled Gmail sync invoked.")
+        access_token = (
+            self.env["ir.config_parameter"].sudo().get_param("gmail_access_token")
+        )
+        if not access_token:
+            _logger.error("Access token not available. Cannot sync Gmail messages.")
+            return
+
+        try:
+            self.fetch_gmail_messages(access_token)
+        except Exception as e:
+            _logger.error("Error during scheduled Gmail sync: %s", str(e))
+
+    # @api.model
+    # def load_views(self, views, options=None):
+    #     """Gọi fetch_gmail_messages mỗi khi load trang"""
+    #     access_token = (
+    #         self.env["ir.config_parameter"].sudo().get_param("gmail_access_token")
+    #     )
+    #     if access_token:
+    #         self.fetch_gmail_messages(access_token)
+    #     return super(MailMessage, self).load_views(views, options)
 
     @api.model
     def scheduled_gmail_sync(self):
