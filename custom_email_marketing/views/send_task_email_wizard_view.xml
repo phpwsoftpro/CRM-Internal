@@ -10,10 +10,11 @@
                     <field name="email_subject"/>
                     <field name="message_id" placeholder="Nhập Message-ID từ Gmail (nếu reply)"/>
                     <field name="attachment_ids" widget="many2many_binary" string="Attachment"/>
-                    <field name="body_html" widget="mail_html"/>
+                    <field name="body_html" widget="ckeditor"/>
                 </group>
                 <footer>
                     <button name="send_email" string="Send" type="object" class="btn-primary"/>
+                     <button name="save_draft" string="Lưu tạm" type="object" class="btn-secondary"/>
                     <button string="Discard" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
