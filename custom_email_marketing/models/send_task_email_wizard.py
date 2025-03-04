@@ -1,15 +1,18 @@
 from odoo import models, fields, api
 from odoo.exceptions import UserError
 
+
 class SendTaskEmailWizard(models.TransientModel):
-    _name = 'send.task.email.wizard'
-    _description = 'Wizard gửi email mới cho Task'
+    _name = "send.task.email.wizard"
+    _description = "Wizard gửi email mới cho Task"
 
     email_to = fields.Char(string="To", required=True)
     email_subject = fields.Char(string="Subject", required=True)
-    body_html = fields.Html(string="Body", required=True, sanitize=True) 
-    message_id = fields.Char(string="Message-ID", help="Nhập Message-ID từ Gmail khi reply")
-    attachment_ids = fields.Many2many('ir.attachment', string="File đính kèm")
+    body_html = fields.Html(string="Body", required=True, sanitize=True)
+    message_id = fields.Char(
+        string="Message-ID", help="Nhập Message-ID từ Gmail khi reply"
+    )
+    attachment_ids = fields.Many2many("ir.attachment", string="File đính kèm")
 
     def _get_signature_template(self):
         """Generate HTML signature template for current user"""
@@ -52,7 +55,7 @@ class SendTaskEmailWizard(models.TransientModel):
         """Lấy chữ ký mặc định khi mở wizard"""
         res = super(SendTaskEmailWizard, self).default_get(fields_list)
         signature = self._get_signature_template()
-        res['body_html'] = f"<p><br/></p>{signature}"
+        res["body_html"] = f"<p><br/></p>{signature}"
         return res
 
     def send_email(self):
@@ -62,18 +65,18 @@ class SendTaskEmailWizard(models.TransientModel):
 
         headers = {}
         if self.message_id:
-            headers['In-Reply-To'] = f"<{self.message_id}>"
-            headers['References'] = f"<{self.message_id}>"
+            headers["In-Reply-To"] = f"<{self.message_id}>"
+            headers["References"] = f"<{self.message_id}>"
 
         mail_values = {
-            'subject': self.email_subject,
-            'body_html': self.body_html,
-            'email_to': self.email_to,
-            'email_from': self.env.user.email or 'no-reply@example.com',
-            'reply_to': self.env.user.email,
-            'headers': headers,
-            'attachment_ids': [(6, 0, self.attachment_ids.ids)],
+            "subject": self.email_subject,
+            "body_html": self.body_html,
+            "email_to": self.email_to,
+            "email_from": self.env.user.email or "no-reply@example.com",
+            "reply_to": self.env.user.email,
+            "headers": headers,
+            "attachment_ids": [(6, 0, self.attachment_ids.ids)],
         }
-        
-        mail = self.env['mail.mail'].create(mail_values)
+
+        mail = self.env["mail.mail"].create(mail_values)
         mail.send()
