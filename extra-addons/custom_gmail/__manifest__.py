@@ -14,7 +14,14 @@
     'assets': {
         'web.assets_backend': [
             'custom_gmail/static/src/css/gmail_inbox.css',
-            'custom_gmail/static/src/js/gmail_inbox.js',
+            'custom_gmail/static/src/js/GmailInbox.js',
+            'custom_gmail/static/src/js/state.js',
+            'custom_gmail/static/src/js/emailActions.js',
+            'custom_gmail/static/src/js/uiUtils.js',
+            'custom_gmail/static/src/js/storageUtils.js',
+            'custom_gmail/static/src/js/ckeditor.js',
+            'custom_gmail/static/src/js/template.js',
+
         ]
     },
     'installable': True,
