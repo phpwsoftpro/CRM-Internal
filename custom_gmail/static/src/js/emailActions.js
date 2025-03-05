@@ -8,7 +8,7 @@ export async function loadMessages() {
             email: "tony.aasen@example.com",
             subject: "World map 🌎",
             preview: "Hi Robert, I think, but I really don't remember...",
-            date_received: "Feb 20",
+            date_received: "4:30",
             gmail_body: `Hi again Robert,
 
 I think, but I really don't remember if I asked you about it earlier, but we are looking for a map solution for our webpages, where we can tag/mark all KTV Working Drone partners all around the world.
@@ -23,7 +23,7 @@ Do you know about a fairly simple solution for a taggable map like this?`,
             email: "taivip@gmail.com",
             subject: "Hâyyyyy",
             preview: "Hi Robert, I think, but I really don't remember...",
-            date_received: "Feb 20",
+            date_received: "4:30",
             gmail_body: `Hi again Robert,
 
 I think, but I really don't remember if I asked you about it earlier, but we are looking for a map solution for our webpages, where we can tag/mark all KTV Working Drone partners all around the world.

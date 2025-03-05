@@ -73,144 +73,146 @@ export default xml`
 
         <div class="gmail-body">
             <!-- Left Sidebar -->
-            <div class="gmail-sidebar">
-                <button class="compose-btn" t-on-click="onComposeClick">
-                    <span class="compose-icon">✚</span>
-                    <span class="compose-text">Compose</span>
+          <div class="gmail-sidebar">
+                <button class="compose-btn">
+                    <i class="fa fa-pencil"></i> <span>Soạn thư</span>
                 </button>
                 <ul class="gmail-menu">
-                    <li class="active">Inbox</li>
-                    <li>Starred</li>
-                    <li>Snoozed</li>
-                    <li>Sent</li>
-                    <li>Drafts</li>
-                    <li>More</li>
+                    <li><i class="fa fa-inbox"></i> <span>Hộp thư đến</span></li>
+                    <li><i class="fa fa-star-o"></i> <span>Có gắn dấu sao</span></li>
+                    <li><i class="fa fa-clock-o"></i> <span>Đã tạm ẩn</span></li>
+                    <li><i class="fa fa-paper-plane"></i> <span>Đã gửi</span></li>
+                    <li><i class="fa fa-file"></i> <span>Thư nháp</span></li>
+                    <li><i class="fa fa-chevron-down"></i> <span>Hiện thêm</span></li>
                 </ul>
             </div>
 
             <!-- Main Content (Message List) -->
             <div class="gmail-content">
-                <div class="gmail-content-header">Inbox</div>
-                <table class="gmail-table">
-                    <thead>
-                        <tr>
-                            <th class="email-checkbox">
-                                <input type="checkbox" id="selectAll" t-on-click="toggleSelectAll"/>
-                            </th>
-                            <div class="dropdown-caret">
-                                <button class="dropdown-icon" t-on-click="toggleDropdown">
-                                    <i class="fa fa-caret-down"></i>
-                                </button>
-                                <ul class="dropdown-menu-caret" t-attf-class="{{ state.showDropdown ? 'visible' : 'hidden' }}">
-                                    <li t-on-click="() => this.selectFilter('all')">All</li>
-                                    <li t-on-click="() => this.selectFilter('none')">None</li>
-                                    <li t-on-click="() => this.selectFilter('read')">Read</li>
-                                    <li t-on-click="() => this.selectFilter('unread')">Unread</li>
-                                    <li t-on-click="() => this.selectFilter('starred')">Starred</li>
-                                    <li t-on-click="() => this.selectFilter('unstarred')">Unstarred</li>
-                                </ul>
+                <div class="gmail-content-header">
+                    <!-- Dropdown Filters -->
+                    <div class="dropdown-caret">
+                        <button class="dropdown-icon" t-on-click="toggleDropdown">
+                            <i class="fa fa-caret-down"></i>
+                        </button>
+                        <ul class="dropdown-menu-caret" t-attf-class="{{ state.showDropdown ? 'visible' : 'hidden' }}">
+                            <li t-on-click="() => this.selectFilter('all')">All</li>
+                            <li t-on-click="() => this.selectFilter('none')">None</li>
+                            <li t-on-click="() => this.selectFilter('read')">Read</li>
+                            <li t-on-click="() => this.selectFilter('unread')">Unread</li>
+                            <li t-on-click="() => this.selectFilter('starred')">Starred</li>
+                            <li t-on-click="() => this.selectFilter('unstarred')">Unstarred</li>
+                        </ul>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="email-actions">
+                        <button class="icon-btn-reload" t-on-click="onRefresh"><i class="fa fa-refresh"></i></button>
+
+                        <button class="icon-btn-option" t-on-click="toggleDropdownVertical">
+                            <i class="fa fa-ellipsis-v"></i>
+                        </button>
+
+                        <div class="dropdown-menu-vertical" t-attf-class="{{ state.showDropdownVertical ? 'visible' : 'hidden' }}">
+                            <div class="dropdown-item">
+                                <i class="fa fa-envelope-open-o"></i> Mark all as read
                             </div>
-                            <div class="dropdown-vertical">
-                                <button class="icon-btn-option" t-on-click="toggleDropdownVertical">
-                                    <i class="fa fa-ellipsis-v"></i>
-                                </button>
-                                
-                                <div class="dropdown-menu-vertical" t-attf-class="{{ state.showDropdownVertical ? 'visible' : 'hidden' }}">
-                                    <div class="dropdown-item">
-                                        <i class="fa fa-envelope-open-o"></i> Mark all as read
-                                    </div>
-                                    <div class="dropdown-item disabled">
-                                        <em>Select messages to see more actions</em>
-                                    </div>
-                                </div>
+                            <div class="dropdown-item disabled">
+                                <em>Select messages to see more actions</em>
                             </div>
-                            <div class="email-actions">
-                                <button class="icon-btn-reload" t-on-click="onRefresh" ><i class="fa fa-refresh"></i></button>
-                            </div>
-                            <th class="email-pagination" colspan="6">
-                                <span><t t-esc="state.range_display"/></span>
-                                <button class="icon-btn" t-on-click="prevPage" t-att-disabled="state.currentPage === 1">◀</button>
-                                <button class="icon-btn" t-on-click="nextPage" t-att-disabled="state.currentPage === state.totalPages">▶</button>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                        </div>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="email-pagination">
+                        <span><t t-esc="state.range_display"/></span>
+                        <button class="icon-btn" t-on-click="prevPage" t-att-disabled="state.currentPage === 1">◀</button>
+                        <button class="icon-btn" t-on-click="nextPage" t-att-disabled="state.currentPage === state.totalPages">▶</button>
+                    </div>
+                </div>
+                <div class="content-container">
+                    <!-- Email List -->
+                    <div class="email-list">
                         <t t-foreach="state.messages" t-as="msg" t-key="msg.id">
-                            <tr t-att-class="msg.unread ? 'email-row unread' : 'email-row'"
+                            <div class="email-item"
+                                t-att-class="msg.unread ? 'email-row unread' : 'email-row'"
                                 t-on-click="() => this.onMessageClick(msg)"
                                 t-on-mouseenter="() => this.showIcons(msg)"
                                 t-on-mouseleave="() => this.hideIcons(msg)">
-                                
-                                <td class="email-checkbox">
-                                    <input type="checkbox" t-att-checked="msg.selected"
-                                        t-on-click.stop="() => this.toggleSelect(msg)" />
-                                </td>
 
-                                <td class="email-star">
-                                    <span t-on-click.stop="() => this.toggleStar(msg)">
+                                <!-- Checkbox -->
+                                <div class="email-checkbox">
+                                    <input type="checkbox" t-att-checked="msg.selected" t-on-click.stop="() => this.toggleSelect(msg)" />
+                                </div>
+
+                                <!-- Email Info -->
+                                <div class="email-info">
+                                    <div class="email-header">
+                                        <div class="email-from"><t t-esc="msg.email_sender"/></div>
+                                        <div class="email-actions" t-attf-class="{{msg.showIcons ? 'visible' : 'hidden'}}">
+                                            <span class="icon archive" title="Archive"><i class="fa fa-archive"></i></span>
+                                            <span class="icon delete" title="Delete"><i class="fa fa-trash"></i></span>
+                                            <span class="icon mark-read" title="Mark as Read"><i class="fa fa-envelope"></i></span>
+                                            <span class="icon reply" title="Reply"><i class="fa fa-clock-o"></i></span>
+                                        </div>
+                                        <div class="email-date"><t t-esc="msg.date_received"/></div>
+                                    </div>
+                                    <div class="email-content">
+                                        <div class="email-subject"><b><t t-esc="msg.subject"/></b></div>
+                                        <div class="email-preview"><t t-esc="msg.preview"/></div>
+                                    </div>
+                                </div>
+                                <!-- Star & Actions -->
+                                <div class="email-star-actions">
+                                    <div class="email-star" t-on-click.stop="() => this.toggleStar(msg)">
                                         <t t-if="msg.starred">
                                             <i class="fa fa-star" style="color: #e8e832;"></i>
                                         </t>
                                         <t t-else="">
                                             <i class="fa fa-star-o"></i>
                                         </t>
-                                    </span>
-                                </td>
-                                <td class="email-icon">📩</td>
-
-                                <td class="email-from"><t t-esc="msg.email_sender"/></td>
-
-                                <td class="email-subject">
-                                    <b><t t-esc="msg.subject"/></b> - 
-                                    <span class="email-preview"><t t-esc="msg.preview"/></span>
-                                </td>
-
-                                <td class="email-date"><t t-esc="msg.date_received"/></td>
-
-                                <!-- Các icon hiển thị khi hover -->
-                                <td class="email-actions">
-                                    <div class="icon-group" t-attf-class="{{msg.showIcons ? 'visible' : 'hidden'}}">
-                                        <span class="icon archive" title="Archive"><i class="fa fa-archive"></i></span>
-                                        <span class="icon delete" title="Delete"><i class="fa fa-trash"></i></span>
-                                        <span class="icon mark-read" title="Mark as Read"><i class="fa fa-envelope"></i></span>
-                                        <span class="icon reply" title="Reply"><i class="fa fa-reply"></i></span>
                                     </div>
-                                </td>
-                            </tr>
+                                </div>
+                            </div>
                         </t>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Right Pane (Message Detail) -->
-            <t t-if="state.selectedMessage">
-                <div class="gmail-message-detail thread-view">
-                    <div class="detail-header">
-                        <h2><t t-esc="state.selectedMessage.subject"/></h2>
-                        <div class="detail-actions">
-                            <button class="action-btn" t-on-click="(ev) => this.onReply(ev, state.selectedMessage)">
-                                <span class="action-icon">↩</span> Reply
-                            </button>
-                            <button class="action-btn" t-on-click="(ev) => this.onReplyAll(ev, state.selectedMessage)">
-                                <span class="action-icon">↩↩</span> Reply All
-                            </button>
-                            <button class="action-btn" t-on-click="(ev) => this.onForward(ev, state.selectedMessage)">
-                                <span class="action-icon">↪</span> Forward
-                            </button>
-                        </div>
-                        <div class="detail-meta">
-                            <span class="detail-from">From: <t t-esc="state.selectedMessage.email_sender"/> &lt;<t t-esc="state.selectedMessage.email"/>&gt;</span>
-                            <span class="detail-to">To: <t t-esc="state.selectedAccount.email"/></span> <!-- Thêm To field -->
-                            <span class="detail-date">Date: <t t-esc="state.selectedMessage.date_received"/></span>
-                        </div>
                     </div>
-                    <div class="detail-body">
-                        <div class="message-content">
-                            <p><t t-esc="state.selectedMessage.gmail_body"/></p>
-                        </div>
+                    <div class="gmail-message-detail thread-view">
+                        <t t-if="state.selectedMessage">
+                            <div class="detail-header">
+                                <h2><t t-esc="state.selectedMessage.subject"/></h2>
+                                <div class="detail-actions">
+                                    <button class="action-btn" t-on-click="(ev) => this.onReply(ev, state.selectedMessage)">
+                                        <span class="action-icon">↩</span> Reply
+                                    </button>
+                                    <button class="action-btn" t-on-click="(ev) => this.onReplyAll(ev, state.selectedMessage)">
+                                        <span class="action-icon">↩↩</span> Reply All
+                                    </button>
+                                    <button class="action-btn" t-on-click="(ev) => this.onForward(ev, state.selectedMessage)">
+                                        <span class="action-icon">↪</span> Forward
+                                    </button>
+                                </div>
+                                <div class="detail-meta">
+                                    <span class="detail-from">From: <t t-esc="state.selectedMessage.email_sender"/> &lt;<t t-esc="state.selectedMessage.email"/>&gt;</span>
+                                    <span class="detail-to">To: <t t-esc="state.selectedAccount.email"/></span>
+                                    <span class="detail-date">Date: <t t-esc="state.selectedMessage.date_received"/></span>
+                                </div>
+                            </div>
+                            <div class="detail-body">
+                                <div class="message-content">
+                                    <p><t t-esc="state.selectedMessage.gmail_body"/></p>
+                                </div>
+                            </div>
+                        </t>
+                        
+                        <!-- Nếu không có email nào được chọn, hiển thị thông báo -->
+                        <t t-if="!state.selectedMessage">
+                            <div class="no-message">
+                                <p>Không có cuộc trò chuyện nào được chọn.</p>
+                            </div>
+                        </t>
                     </div>
                 </div>
-            </t>
+            </div>
         </div>
 
         <!-- Compose Modal -->
