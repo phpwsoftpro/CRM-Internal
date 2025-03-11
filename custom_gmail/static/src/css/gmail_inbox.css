@@ -52,6 +52,8 @@
 .gmail-body {
     display: flex;
     height: 100%;
+    flex-direction: column;
+    background-color: #fff;
 }
 
 .gmail-sidebar {
@@ -65,12 +67,11 @@
     align-items: flex-start; /* Căn trái thay vì center */
     padding-top: 10px;
     z-index: 102;
-    border-right: 1px solid #d1d5db;
     overflow: hidden;
 }
 
 .gmail-sidebar:hover {
-    width: 250px;
+    width: 220px;
     padding-left: 10px;
 }
 
@@ -186,28 +187,25 @@
 
 /* Content */
 .gmail-content {
-    padding: 20px;
-    width: 100%; /* Content luôn giữ nguyên kích thước */
+    width: 100%; 
     transition: opacity 0.3s ease-in-out;
-    margin-left: 60px; /* Không đổi margin khi hover */
-}
-
-/* Khi hover vào sidebar, content bị làm mờ */
-.gmail-sidebar:hover ~ .gmail-content {
-    opacity: 0.5; /* Làm mờ content khi sidebar mở */
-    pointer-events: none; /* Vô hiệu hóa thao tác trên content */
-}
-
-.gmail-content-header {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 18px;
-    font-weight: bold;
-    color: #111827;
-    margin-bottom: 10px;
+    height: 100vh;
+    background-color: #fff;
+    flex-direction: column;
+    border-top: 1px solid #ddd
 }
 
+.gmail-header {
+    /* display: flex; */
+    /* align-items: center; */
+    /* justify-content: space-between; */
+    /* background-color: #fff; */
+    /* padding: 30px 20px; */
+    /* border-bottom: 1px solid #e0e0e0; */
+    margin-top: 35px;
+    margin-left: 40px;
+}
 /* Email Item */
 .email-item {
     display: flex;
@@ -222,7 +220,6 @@
 .email-checkbox {
     margin-right: 8px;
     margin-bottom: 38px;
-
 }
 
 .email-info {
@@ -285,10 +282,10 @@
 
 /* Date */
 .email-date {
-    color: #888;
-    text-align: right;
+    color: #5f6368;
+    font-size: 12px;
+    white-space: nowrap;
 }
-
 /* Actions */
 .email-item:hover .email-actions {
     opacity: 1;
@@ -319,60 +316,6 @@
 .dropdown-caret:hover .dropdown-menu-caret,
 .dropdown-vertical:hover .dropdown-menu-vertical {
     display: block;
-}
-.compose-modal {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 400px;
-    background: white;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-}
-
-.compose-modal-header {
-    padding: 10px;
-    display: flex;
-    justify-content: space-between;
-    background: #d93025;
-    color: white;
-    border-radius: 8px 8px 0 0;
-}
-
-.close-btn {
-    background: none;
-    border: none;
-    font-size: 16px;
-    cursor: pointer;
-}
-
-.compose-modal-body {
-    padding: 10px;
-}
-
-.compose-field {
-    margin-bottom: 10px;
-}
-
-.compose-input,
-.compose-textarea {
-    width: 100%;
-    padding: 5px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    outline: none;
-}
-
-.send-btn {
-    background: #1a73e8;
-    color: white;
-    border: none;
-    padding: 10px 15px;
-    cursor: pointer;
-    border-radius: 5px;
-}
-.ck-content{
-    height: 250px;
 }
 .email-checkbox input {
     width: 16px;
@@ -430,10 +373,14 @@ th {
 .icon-btn {
     background: none;
     border: none;
+    font-size: 18px;
     cursor: pointer;
-    font-size: 16px;
-    padding: 5px;
     color: #5f6368;
+    padding: 6px;
+    border-radius: 50%;
+}
+.icon-btn:hover {
+    background-color: rgba(0, 0, 0, 0.1);
 }
 .icon-btn-reload, .icon-btn-option, .dropdown-icon{
     background: none;
@@ -446,16 +393,20 @@ th {
     font-size: 15px;
 }
 .icon-btn-reload{
-    top: 163px;
+    top: 110px;
     position: absolute;
-    left: 340px;
+    left: 126px;
     font-size: 15px;
+}
+.icon-btn-reload:hover,  .icon-btn-option:hover{
+    border-radius: 50%;
+    background-color: #ddd;
 }
 .icon-btn-option {
     position: absolute;
-    top: -5px;
+    top: 110px;
     font-size: 15px;
-    right: -110px;
+    left: 172px;
 }
 .icon-btn:hover {
     background: #e8eaed;
@@ -476,8 +427,9 @@ th {
     padding: 5px 10px;
 }
 .dropdown-caret {
-    position: relative;
-    display: inline-block;
+    position: absolute;
+    left: 86px;
+    top: 115px;
 }
 
 .dropdown-menu-caret {
@@ -740,81 +692,369 @@ th {
     display: flex;
     flex-grow: 1;
     transition: margin-left 0.3s ease-in-out;
-    margin-left: -19px;
+    margin-left: 60px;
+    height: 100vh;
 }
 .gmail-sidebar:hover ~ .content-container {
     margin-left: 250px;
 }
 .email-list {
-    width: 370px;
+    width: 380px;
     height: 100vh;
     overflow-y: auto;
     border-right: 1px solid #e5e7eb;
 }
 
-/* Chi tiết tin nhắn */
-.gmail-message-detail {
-    flex-grow: 1;
+.email-detail {
+    height: 100%;
     display: flex;
     flex-direction: column;
-    padding: 20px;
-    height: 100vh;
     overflow-y: auto;
+    flex-grow: 1;
 }
 
-/* Khi không có tin nhắn nào */
-.no-message {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    font-size: 18px;
-    color: #888;
-}
-
-/* Nội dung tin nhắn */
 .detail-header {
-    border-bottom: 1px solid #e5e7eb;
-    padding-bottom: 10px;
+    /* padding: 14px; */
+    margin-top: 12px;
+    margin-left: 20px;
+}
+.detail-subject {
+    font-size: 1.25rem;
+    font-weight: 500;
+    margin: 0 0 12px 46px;
+}
+
+.detail-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.sender-info {
+    display: flex;
+    align-items: flex-start;
     margin-bottom: 10px;
 }
 
-.detail-header h2 {
-    font-size: 20px;
-    color: #1a73e8;
+.sender-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 12px;
+    object-fit: cover;
+    background-color: #e8eaed;
+}
+
+.sender-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.sender-line {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sender-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #202124;
+}
+
+.sender-email {
+    font-size: 14px;
+    color: #5f6368;
+    font-weight: normal;
+}
+
+.recipient-line {
+    font-size: 13px;
+    color: #5f6368;
+    margin: 4px 0;
+    cursor: pointer;
+}
+
+.dropdown-arrow {
+    font-size: 10px;
+    margin-left: 4px;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+}
+.dropdown-menu-caret, .dropdown-menu-vertical {
+    display: none;
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ddd;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 8px 0;
+    border-radius: 4px;
+}
+.dropdown-menu-caret.visible, .dropdown-menu-vertical.visible {
+    display: block;
+}
+.icon-btn {
+    background: transparent;
+    border: none;
+    color: #5f6368;
+    margin-left: 8px;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 50%;
+}
+
+.icon-btn:hover {
+    background-color: rgba(0, 0, 0, 0.07);
+}
+.gmail-tabs {
+    /* position: absolute; */
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    /* top: 118px; */
+    /* left: 40px; */
+    /* margin-top: 22px; */
+    margin-left: 21px;
+}
+.email-checkbox-all{
+    position: absolute;
+    left: 70px;
+    top: 113px;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    color: #5f6368;
+    cursor: pointer;
+    padding: 18px 80px;
+}
+
+.tab.active {
+    color: #0b57d0;
+    font-weight: bold;
+    border-bottom: 3px solid #0b57d0;
+}
+.tab:hover{
+    background-color: #aebbcb2e;
+    border-radius: 5px;
+}
+.tab i {
+    margin-right: 8px;
+    font-size: 18px;
+    margin-left: -72px;
+}
+.email-count {
+    font-size: 12px;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 12px;
+    margin-left: 8px;
+    color: white;
+}
+.email-count.blue {
+    background-color: #1a73e8;
+}
+
+.email-count.orange {
+    background-color: #ea8600;
+}
+/* 📌 Pagination */
+.email-pagination {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: #5f6368;
+}
+.detail-body {
+    padding: 16px 0;
+    line-height: 1.5;
+    color: #202124;
+    font-size: 14px;
+}
+
+.email-attachments {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #f1f3f4;
+}
+
+.attachments-title {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 12px;
+    color: #5f6368;
+}
+
+.attachments-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.attachment-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100px;
+    padding: 12px;
+    background-color: #f1f3f4;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.attachment-item:hover {
+    background-color: #e8eaed;
+}
+
+.attachment-icon {
+    font-size: 24px;
+    color: #5f6368;
+    margin-bottom: 8px;
+}
+
+.attachment-name {
+    font-size: 12px;
+    color: #202124;
+    text-align: center;
+    word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 .detail-actions {
     display: flex;
-    gap: 10px;
-    margin-top: 10px;
+    gap: 12px;
 }
 
 .action-btn {
-    padding: 8px 12px;
-    border: none;
-    background: #f1f3f4;
-    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    background-color: #fff;
+    border: 1px solid #dadce0;
+    border-radius: 24px; /* Làm bo tròn giống ảnh */
+    color: #3c4043;
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background-color 0.2s, box-shadow 0.2s;
+    min-width: 120px; /* Đảm bảo không bị quá nhỏ */
+    gap: 8px; /* Khoảng cách giữa icon và text */
 }
 
 .action-btn:hover {
-    background: #e0e0e0;
+    background-color: #f1f3f4;
 }
 
-.detail-meta {
+.action-btn i {
+    font-size: 16px;
+    color: #5f6368;
+}
+
+
+.no-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    color: #5f6368;
+}
+
+.no-message-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: #dadce0;
+}
+
+.no-message p {
+    margin: 4px 0;
     font-size: 14px;
-    color: #666;
+}
+/* Thread styling */
+.thread-container {
+    border-radius: 8px;
+    margin-bottom: 20px;
 }
 
-.detail-body {
-    margin-top: 15px;
-    background: white;
+.thread-message {
     padding: 15px;
-    border-radius: 5px;
-    border: 1px solid #e5e7eb;
-    max-width: 800px;
+    border-bottom: 1px solid #f0f0f0;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.thread-message.collapsed .message-content,
+.thread-message.collapsed .email-attachments {
+    display: none;
+}
+.thread-message:last-child {
+    border-bottom: none;
 }
 
+.thread-count {
+    margin-top: 5px;
+    margin-bottom: 15px;
+}
 
+.thread-count .badge {
+    background-color: #f1f3f4;
+    color: #5f6368;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 13px;
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.message-content {
+    white-space: pre-wrap;
+    line-height: 1.5;
+    margin-left: 48px;
+    margin-bottom: 15px;
+}
+
+.thread-message.collapsed {
+    max-height: 80px;
+    overflow: hidden;
+}
+
+.thread-message.collapsed::after {
+    content: "...";
+    position: absolute;
+    bottom: 0;
+    right: 15px;
+    background-color: #fff;
+    padding: 0 5px;
+}
+
+.toggle-message {
+    background: none;
+    border: none;
+    color: #1a73e8;
+    cursor: pointer;
+    font-size: 13px;
+    margin-left: 48px;
+    padding: 5px 0;
+}
+
+.toggle-message:hover {
+    text-decoration: underline;
+}
