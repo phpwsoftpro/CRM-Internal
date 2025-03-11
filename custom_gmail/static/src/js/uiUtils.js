@@ -38,7 +38,16 @@ export function toggleSelectAll(ev) {
     });
     this.render();
 }
-
+export function toggleSelect(msg) {
+    msg.selected = !msg.selected;
+    this.render();
+}
+export function toggleThreadMessage(threadMsg) {
+    if (threadMsg) {
+        threadMsg.collapsed = !threadMsg.collapsed;
+        this.render();
+    }
+}
 export function prevPage() {
     if (this.state.currentPage > 1) {
         this.state.currentPage--;
