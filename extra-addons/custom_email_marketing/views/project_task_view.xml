@@ -83,4 +83,22 @@
             </xpath>
         </field>
     </record>
+    <record id="view_task_form_with_chatter_filter" model="ir.ui.view">
+        <field name="name">project.task.form.chatter.filter</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            <!-- Thêm bộ lọc dạng dropdown vào trước div chatter -->
+            <xpath expr="//chatter" position="before">
+                <div class="o_communication_filter_dropdown">
+                    <select id="chatter_filter_select" class="form-select">
+                        <option value="all">Tất cả</option>
+                        <option value="message">Tin nhắn</option>
+                        <option value="note">Ghi chú</option>
+                        <option value="activity">Hoạt động</option>
+                    </select>
+                </div>
+            </xpath>
+        </field>
+    </record>
 </odoo>

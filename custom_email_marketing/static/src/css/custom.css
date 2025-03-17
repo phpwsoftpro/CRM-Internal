@@ -14,3 +14,7 @@
 .o_dialog .modal-content {
     pointer-events: auto !important;
 }
+.form-select{
+    margin-top: 8px;
+    border: 1px solid black !important;
+}
