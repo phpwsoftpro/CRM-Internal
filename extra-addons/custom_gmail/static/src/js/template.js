@@ -305,9 +305,9 @@ export default xml`
                     <div class="left-buttons">
                         <button class="send-btn" t-on-click="onSendEmail">Gửi</button>
                     </div>
-                    <div class="trash-icon">
+                    <button class="trash-icon" t-on-click="onCloseCompose">
                         <i class="fa fa-trash"></i>
-                    </div>
+                    </button>
                 </div>
             </div>
         </t>
