@@ -1,5 +1,5 @@
 .gmail-root {
-    font-family: Arial, sans-serif;
+    font-family: Poppins, sans-serif;
     display: flex;
     flex-direction: column;
     height: 100vh;
@@ -699,10 +699,12 @@ th {
     margin-left: 250px;
 }
 .email-list {
-    width: 380px;
     height: 100vh;
-    overflow-y: auto;
     border-right: 1px solid #e5e7eb;
+    flex: 0 0 350px; 
+    max-width: 350px; 
+    overflow-y: auto;
+    min-height: 100vh; 
 }
 
 .email-detail {
@@ -987,6 +989,8 @@ th {
 .thread-container {
     border-radius: 8px;
     margin-bottom: 20px;
+    overflow-y: auto;
+    min-width: 0; 
 }
 
 .thread-message {
@@ -999,6 +1003,15 @@ th {
 .thread-message.collapsed .message-content,
 .thread-message.collapsed .email-attachments {
     display: none;
+}
+.thread-message .message-content,
+.thread-message .email-attachments {
+    display: none;
+}
+
+.thread-message:not(.collapsed) .message-content,
+.thread-message:not(.collapsed) .email-attachments {
+    display: block;
 }
 .thread-message:last-child {
     border-bottom: none;
