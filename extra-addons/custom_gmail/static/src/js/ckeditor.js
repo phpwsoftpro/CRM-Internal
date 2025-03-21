@@ -24,5 +24,5 @@ export async function initCKEditor() {
                     console.error("Error loading CKEditor:", error);
                 });
         }
-    }, 1000);
+    }, 100);
 }

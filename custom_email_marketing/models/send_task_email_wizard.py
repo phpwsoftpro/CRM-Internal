@@ -6,7 +6,7 @@ class TaskEmailHistory(models.Model):
     _name = "task.email.history"
     _description = "Store last email details per task"
 
-    task_id = fields.Many2one("project.task", string="Task", required=True)
+    task_id = fields.Many2one("project.task", string="Task", required=True, ondelete="cascade")
     user_id = fields.Many2one("res.users", string="User", required=True)
     last_email_to = fields.Char(string="Last Recipient Email")  # 🆕 Thêm trường này
     last_subject = fields.Char(string="Last Subject")

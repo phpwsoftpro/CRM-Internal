@@ -701,8 +701,8 @@ th {
 .email-list {
     height: 100vh;
     border-right: 1px solid #e5e7eb;
-    flex: 0 0 350px; 
-    max-width: 350px; 
+    /* flex: 0 0 350px;  */
+    max-width: 700px; 
     overflow-y: auto;
     min-height: 100vh; 
 }

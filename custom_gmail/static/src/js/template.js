@@ -161,7 +161,7 @@ export default xml`
                                 <!-- Email Info -->
                                 <div class="email-info">
                                     <div class="email-header">
-                                        <div class="email-from"><t t-esc="msg.email_sender"/></div>
+                                        <div class="email-from"><t t-esc="msg.sender"/></div>
                                         <div class="email-actions" t-attf-class="{{msg.showIcons ? 'visible' : 'hidden'}}">
                                             <span class="icon archive" title="Archive"><i class="fa fa-archive"></i></span>
                                             <span class="icon delete" title="Delete"><i class="fa fa-trash"></i></span>
@@ -223,7 +223,7 @@ export default xml`
                                                 <button class="icon-btn star-btn" aria-label="Đánh dấu sao" t-on-click.stop="() => this.toggleStar(threadMsg)">
                                                     <i t-att-class="threadMsg.starred ? 'fa fa-star' : 'fa fa-star-o'"></i>
                                                 </button>
-                                                <button class="icon-btn reply-btn" aria-label="Phản hồi">
+                                                <button class="icon-btn reply-btn" aria-label="Phản hồi" t-on-click="(ev) => this.onReply(ev, state.selectedMessage)">
                                                     <i class="fa fa-reply"></i>
                                                 </button>
                                                 <button class="icon-btn more-btn" aria-label="Thêm tùy chọn">

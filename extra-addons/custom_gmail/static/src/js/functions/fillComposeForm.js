@@ -1,15 +1,18 @@
 /** @odoo-module **/
 
 export function fillComposeForm(to, subject, body, editorInstance) {
-    const toField = document.querySelector(".compose-input[name='to']");
-    const subjectField = document.querySelector(".compose-input[name='subject']");
+    document.querySelector(".compose-input.to").value = to;
+    document.querySelector(".compose-input.subject").value = subject;
 
-    if (toField) toField.value = to;
-    if (subjectField) subjectField.value = subject;
-    
-    if (editorInstance) {
+    // Kiểm tra nếu editorInstance hợp lệ (CKEditor)
+    if (editorInstance && typeof editorInstance.setData === "function") {
         editorInstance.setData(body);
-    } else if (document.querySelector("#compose_body")) {
-        document.querySelector("#compose_body").value = body;
+    } else {
+        // Nếu CKEditor chưa khởi tạo, gán nội dung vào textarea
+        const textarea = document.querySelector("#compose_body");
+        if (textarea) {
+            textarea.innerHTML = body; // Nếu CKEditor không hoạt động, fallback sang textarea
+        }
     }
 }
+
