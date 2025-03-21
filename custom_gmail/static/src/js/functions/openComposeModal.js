@@ -35,47 +35,46 @@ function openComposeModalInternal(mode, msg) {
         }
     }
 
-    // Use a single timeout for initializing editor
+    // Khởi tạo nội dung email dựa trên mode (reply, forward, new)
     setTimeout(() => {
-        // Check if editor already exists and destroy it
         if (this.editorInstance) {
             this.editorInstance.destroy();
             this.editorInstance = null;
         }
-        
-        // Initialize editor and store the instance
+
         this.editorInstance = this.initCKEditor();
-        
-        // Fill the form after editor is ready
-        const editorContent = {
-            "reply": {
-                subject: msg.subject.startsWith("Re:") ? msg.subject : `Re: ${msg.subject}`,
-                to: msg.email,
-                body: `<br><br>On ${msg.date_received}, ${msg.email_sender} <${msg.email}> wrote:<br><blockquote>${msg.gmail_body.replace(/\n/g, '<br>')}</blockquote>`
-            },
-            "replyAll": {
-                subject: msg.subject.startsWith("Re:") ? msg.subject : `Re: ${msg.subject}`,
-                to: msg.email,
-                body: `<br><br>On ${msg.date_received}, ${msg.email_sender} <${msg.email}> wrote:<br><blockquote>${msg.gmail_body.replace(/\n/g, '<br>')}</blockquote>`
-            },
-            "forward": {
-                subject: msg.subject.startsWith("Fwd:") ? msg.subject : `Fwd: ${msg.subject}`,
-                to: "",
-                body: `<br><br>---------- Forwarded message ---------<br>From: ${msg.email_sender} <${msg.email}><br>Date: ${msg.date_received}<br>Subject: ${msg.subject}<br><br>${msg.gmail_body.replace(/\n/g, '<br>')}`
-            },
-            "new": {
-                subject: "",
-                to: "",
-                body: ""
-            }
-        };
-        
-        const contentType = mode in editorContent ? mode : "new";
-        fillComposeForm(
-            editorContent[contentType].to,
-            editorContent[contentType].subject,
-            editorContent[contentType].body,
-            this.editorInstance
-        );
+
+        let subject = msg.subject;
+        if (mode === "reply" && !msg.subject.startsWith("Re:")) {
+            subject = `Re: ${msg.subject}`;
+        } else if (mode === "forward" && !msg.subject.startsWith("Fwd:")) {
+            subject = `Fwd: ${msg.subject}`;
+        }
+
+        let body = "";
+        if (mode === "reply" || mode === "replyAll") {
+            body = `
+                <br><br>On ${msg.date_received}, ${msg.email_sender} <${msg.email}> wrote:<br>
+                <blockquote>${msg.gmail_body.replace(/\n/g, "<br>")}</blockquote>
+            `;
+        } else if (mode === "forward") {
+            body = `
+                <br><br>---------- Forwarded message ---------<br>
+                From: ${msg.email_sender} <${msg.email}><br>
+                Date: ${msg.date_received}<br>
+                Subject: ${msg.subject}<br><br>
+                ${msg.gmail_body.replace(/\n/g, "<br>")}
+            `;
+        }
+
+        // Gọi hàm điền nội dung email vào compose modal
+        fillComposeForm(msg.email, subject, body, this.editorInstance);
     }, 100);
+}
+
+export function getThreadMessageById(state, messageId, threadId) {
+    if (state.threads && state.threads[threadId]) {
+        return state.threads[threadId].find(msg => msg.id === messageId) || null;
+    }
+    return null;
 }

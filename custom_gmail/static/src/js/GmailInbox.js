@@ -3,17 +3,17 @@
 import { Component, onMounted } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { initialState } from "./state";
-import { loadMessages, toggleStar, onReply, onReplyAll, onForward } from "./functions/index";
+import { toggleStar, onReply, onReplyAll, onForward } from "./functions/index";
 import { toggleDropdown, toggleDropdownVertical, toggleAccounts, toggleDropdownAccount, toggleSelectAll, prevPage, nextPage, onRefresh, onMoreActions, showIcons, hideIcons, getInitialBgColor, getInitialColor, getStatusText, toggleSelect, toggleThreadMessage } from "./uiUtils";
 import { saveStarredState, loadStarredState } from "./storageUtils";
 import { initCKEditor, loadCKEditor } from "./ckeditor";
 import { openComposeModal } from "./functions/openComposeModal";
 import template from "./template";
+import { rpc } from "@web/core/network/rpc";
 export class GmailInbox extends Component {
     setup() {
         this.state = initialState();
 
-        this.loadMessages = loadMessages.bind(this);
         this.toggleStar = toggleStar.bind(this);
         this.onReply = onReply.bind(this);
         this.onReplyAll = onReplyAll.bind(this);
@@ -44,7 +44,14 @@ export class GmailInbox extends Component {
             this.state.selectedAccount = this.state.accounts[0];
         });
     }
-
+    async loadMessages() {
+        try {
+            const messages = await rpc('/gmail/messages', {});
+            this.state.messages = messages;
+        } catch (error) {
+            console.error("Error fetching Gmail messages:", error);
+        }
+    }
     onMessageClick(msg) {
         // Set the selected message
         this.state.selectedMessage = msg;
