@@ -39,7 +39,7 @@ class GmailFetch(models.Model):
         _logger.info("Redirect URL generated: %s", auth_url)
         return {
             'type': 'ir.actions.act_url',
-            'url': auth_url,
+            'url': str(auth_url),
             'target': 'new',
         }
 
