@@ -18,7 +18,7 @@ class ResPartner(models.Model):
 
     last_modified_date = fields.Datetime(
         string="Last Modified Date (GMT+7)",
-        compute="_compute_last_modified_date",
+        # compute="_compute_last_modified_date",
         store=True,
     )
     industry = fields.Selection(

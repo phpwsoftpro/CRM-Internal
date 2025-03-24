@@ -7,10 +7,11 @@
             <form string="Gửi Email Mới">
                 <group>
                     <field name="email_to"/>
+                    <field name="email_cc" placeholder="example1@gmail.com, example2@gmail.com"/>
                     <field name="email_subject"/>
                     <field name="message_id" placeholder="Nhập Message-ID từ Gmail (nếu reply)"/>
                     <field name="attachment_ids" widget="many2many_binary" string="Attachment"/>
-                    <field name="body_html" widget="ckeditor"/>
+                    <field name="body_html" widget="html" options="{'sanitize': false}" />
                 </group>
                 <footer>
                     <button name="send_email" string="Send" type="object" class="btn-primary"/>

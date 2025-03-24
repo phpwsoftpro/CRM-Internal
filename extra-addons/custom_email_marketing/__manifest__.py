@@ -26,7 +26,6 @@
         "views/mailing_view_inherit.xml",
         "views/data/tech_stack_data.xml",
         "views/custom_send_email_template.xml",
-        "views/discuss_view.xml",
         "views/project_task_view.xml",
         "views/send_task_email_wizard_view.xml",
         "wizards/project_task_move_views.xml",
