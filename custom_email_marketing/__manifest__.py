@@ -1,8 +1,8 @@
 {
-    "name": "Custom Menu Override",
-    "summary": "Override the Email Marketing menu with Companies and Contacts",
+    "name": "Custom Email Marketing",
+    "summary": "Override the Email Marketing menu with Companies and Contacts, and add real-time notification support.",
     "version": "1.0",
-    "author": "",
+    "author": "Your Name / Company",
     "category": "Marketing",
     "license": "LGPL-3",
     "depends": [
@@ -10,17 +10,20 @@
         "mail",
         "mass_mailing",
         "project",
-        "web",  # assuming you need this based on your menus
+        "web",
+        "bus",
     ],
-    'assets': {
-        'web.assets_backend': [
+    "assets": {
+        "web.assets_backend": [
             "custom_email_marketing/static/src/css/custom.css",
             "custom_email_marketing/static/src/js/chatter_filter.js",
+            "custom_email_marketing/static/src/js/notification_widget.js",
+            # "custom_email_marketing/static/src/js/notification_init.js",
+            # "custom_email_marketing/static/src/js/notification_webclient.js",
         ],
-        'web.assets_qweb': [],
     },
     "data": [
-        "security/ir.model.access.csv",  # File CSV chứa quyền truy cập
+        "security/ir.model.access.csv",
         "views/custom_menu_view.xml",
         "views/form_view_company.xml",
         "views/mailing_view_inherit.xml",
@@ -32,6 +35,5 @@
         "wizards/project_task_move_views.xml",
     ],
     "installable": True,
-    "auto_install": False,
     "application": True,
 }

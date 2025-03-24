@@ -15,7 +15,6 @@ class ResPartner(models.Model):
         compute="_compute_last_activity_date",
         help="Date of last email sent to this contact",
     )
-
     last_modified_date = fields.Datetime(
         string="Last Modified Date (GMT+7)",
         compute="_compute_last_modified_date",
@@ -64,13 +63,17 @@ class ResPartner(models.Model):
     def _compute_last_activity_date(self):
         for record in self:
             record.last_activity_date = record.write_date
+
     @api.model
     def create(self, vals):
-        if 'name' in vals:
-            existing_company = self.search([('name', '=', vals['name'])], limit=1)
+        if "name" in vals:
+            existing_company = self.search([("name", "=", vals["name"])], limit=1)
             if existing_company:
-                raise ValidationError("The company name already exists! Please choose another name.")
+                raise ValidationError(
+                    "The company name already exists! Please choose another name."
+                )
         return super(ResPartner, self).create(vals)
+
     @api.constrains("email", "website")
     def _check_unique_email_website(self):
         for record in self:

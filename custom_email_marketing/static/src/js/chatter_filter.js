@@ -61,7 +61,7 @@ function applyFilter() {
             break;
         case "note":
             notes.forEach(el => el.style.display = "");
-            break;
+            break;  
         case "activity":
             activities.forEach(el => el.style.display = "");
             break;
