@@ -13,13 +13,8 @@ class ProjectTask(models.Model):
     ], string="Priority", default='1')
     has_new_log = fields.Boolean(string="New Log Note", default=False)
     new_log_count = fields.Integer(string="New Log Note Count", default=0)
-    connected_task_ids = fields.Many2many(
-        'project.task',
-        'project_task_connection_rel',
-        'task_id',
-        'connected_task_id',
-        string='Connected Tasks'
-    )
+    connected_task_ids = fields.Many2many('project.task', 'task_connected_rel', 'task_id', 'connected_task_id', 
+                                         string="Connected Tasks")
     cover_image = fields.Binary("Cover Image")
     @api.model
     def create(self, vals):
@@ -155,4 +150,12 @@ class ProjectTask(models.Model):
             'context': {
                 'default_email_to': self.partner_id.email,  # Điền email khách hàng
             }
+        }
+    def action_open_in_new_tab(self):
+        """Open the task in a new tab using client action"""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/web#id=%d&model=project.task&view_type=form' % self.id,
+            'target': 'new',
         }

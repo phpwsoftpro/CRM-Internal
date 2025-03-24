@@ -1,9 +1,0 @@
-<odoo>
-    <template id="custom_discuss_button" inherit_id="mail.DiscussSidebar" name="Add Custom Button in Discuss Sidebar">
-        <xpath expr="//div[@class='d-flex align-items-center justify-content-center']" position="inside">
-            <button type="button" class="btn btn-success" t-on-click="on_custom_button_click">
-                Custom Button
-            </button>
-        </xpath>
-    </template>
-</odoo>
