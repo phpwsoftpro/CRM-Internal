@@ -26,13 +26,19 @@ class GmailInboxController(http.Controller):
 
         result = []
         for msg in messages:
-            result.append({
-                'id': msg.id,
-                'subject': msg.subject,
-                'sender': msg.email_sender,
-                'receiver': msg.email_receiver,
-                'date_received': msg.date_received.strftime('%Y-%m-%d %H:%M:%S') if msg.date_received else '',
-                'body': msg.gmail_body[:200] + "..." if msg.gmail_body else 'No Content'
-            })
+            result.append(
+                {
+                    "id": msg.id,
+                    "subject": msg.subject,
+                    "sender": msg.email_sender,
+                    "receiver": msg.email_receiver,
+                    "date_received": (
+                        msg.date_received.strftime("%Y-%m-%d %H:%M:%S")
+                        if msg.date_received
+                        else ""
+                    ),
+                    "body": msg.body + "..." if msg.body else "No Content",
+                }
+            )
 
         return result
