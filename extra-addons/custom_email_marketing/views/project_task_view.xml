@@ -78,7 +78,15 @@
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
                 <page string="Attachment">
-                    <field name="connected_task_ids" context="{'form_view_mode': 'edit'}"></field>
+                    <field name="connected_task_ids" widget="many2many" context="{'form_view_mode': 'edit'}" options="{'no_create': True}">
+                        <list>
+                            <field name="name"/>
+                            <field name="project_id"/>
+                            <field name="stage_id"/>
+                            <field name="user_ids" widget="many2many_avatar_user"/>
+                            <button name="action_open_in_new_tab" type="object" string="Open" icon="fa-external-link"/>
+                        </list>
+                    </field>
                 </page>
             </xpath>
         </field>
@@ -92,10 +100,10 @@
             <xpath expr="//chatter" position="before">
                 <div class="o_communication_filter_dropdown">
                     <select id="chatter_filter_select" class="form-select">
-                        <option value="all">Tất cả</option>
-                        <option value="message">Tin nhắn</option>
-                        <option value="note">Ghi chú</option>
-                        <option value="activity">Hoạt động</option>
+                        <option value="all">All</option>
+                        <option value="message">Message</option>
+                        <option value="note">Log note</option>
+                        <option value="activity">Activities</option>
                     </select>
                 </div>
             </xpath>

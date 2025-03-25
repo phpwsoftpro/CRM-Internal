@@ -215,3 +215,11 @@ class ProjectTask(models.Model):
                     "message": message,
                 })
         return result
+    def action_open_in_new_tab(self):
+        """Open the task in a new tab using client action"""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/web#id=%d&model=project.task&view_type=form' % self.id,
+            'target': 'new',
+        }
