@@ -3,8 +3,9 @@ from odoo import models, fields, api
 
 _logger = logging.getLogger(__name__)
 
+
 class GmailMessage(models.Model):
-    _inherit = 'mail.message'
+    _inherit = "mail.message"
 
     gmail_id = fields.Char(string="Gmail ID", index=True)
     gmail_body = fields.Text(string="Body")
@@ -13,4 +14,25 @@ class GmailMessage(models.Model):
     email_sender = fields.Char(string="Email Sender")
     email_receiver = fields.Char(string="Email Receiver")
     email_cc = fields.Char(string="Email CC")
-    last_fetched_email_id = fields.Char(string="Last Fetched Email ID", help="Stores the last fetched Gmail ID to optimize fetching new emails.")
+    last_fetched_email_id = fields.Char(
+        string="Last Fetched Email ID",
+        help="Stores the last fetched Gmail ID to optimize fetching new emails.",
+    )
+
+
+class MailMail(models.Model):
+    _inherit = "mail.mail"
+
+    @api.model
+    def create_and_send_email(self, values):
+        _logger.info("BODY_HTML = %s", values.get("body_html"))  # Debug log
+        mail = self.create(
+            {
+                "email_to": values.get("email_to"),
+                "subject": values.get("subject"),
+                "body_html": values.get("body_html"),  # <-- cần dòng này
+                "email_from": self.env.user.email,
+            }
+        )
+        mail.send()
+        return True

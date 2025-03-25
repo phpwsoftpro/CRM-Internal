@@ -13,12 +13,14 @@ export function loadCKEditor() {
 }
 
 export async function initCKEditor() {
-    await this.loadCKEditor();
+    await loadCKEditor();
+
     setTimeout(() => {
-        if (window.ClassicEditor) {
-            ClassicEditor.create(document.querySelector("#compose_body"))
+        const el = document.querySelector("#compose_body");
+        if (el && window.ClassicEditor) {
+            ClassicEditor.create(el)
                 .then(editor => {
-                    this.editorInstance = editor;
+                    window.editorInstance = editor; // ✅ Gán đúng
                 })
                 .catch(error => {
                     console.error("Error loading CKEditor:", error);
