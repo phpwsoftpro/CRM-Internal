@@ -233,7 +233,7 @@ export default xml`
                                         </div>
 
                                         <div class="message-content" t-att-style="threadMsg.collapsed ? 'display: none;' : 'display: block;'">
-                                            <t t-raw="threadMsg.gmail_body"/>
+                                            <t t-raw="threadMsg.body"/>
                                         </div>
                                         
                                         <div class="email-attachments" t-if="threadMsg.attachments &amp;&amp; threadMsg.attachments.length">
