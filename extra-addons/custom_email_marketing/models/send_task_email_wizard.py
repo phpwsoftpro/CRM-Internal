@@ -158,14 +158,16 @@ class SendTaskEmailWizard(models.TransientModel):
         if self.message_id:
             headers["In-Reply-To"] = f"<{self.message_id}>"
             headers["References"] = f"<{self.message_id}>"
+        mail_server = self.env['ir.mail_server'].search([], limit=1)  
+        email_from = mail_server.smtp_user if mail_server else self.env.user.email or "no-reply@example.com"
 
         mail_values = {
             "subject": self.email_subject,
             "body_html": self.body_html,
             "email_to": self.email_to,
             "email_cc": self.email_cc,
-            "email_from": self.env.user.email or "no-reply@example.com",
-            "reply_to": False,
+            "email_from": email_from,  
+            "reply_to": email_from,  
             "headers": headers,
             "attachment_ids": [(6, 0, attachment_ids)] if attachment_ids else [],
         }
