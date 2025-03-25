@@ -16,6 +16,7 @@
         'web.assets_backend': [
             "custom_email_marketing/static/src/css/custom.css",
             "custom_email_marketing/static/src/js/chatter_filter.js",
+            "custom_email_marketing/static/src/js/chatter_button_order.js",
         ],
         'web.assets_qweb': [],
     },
