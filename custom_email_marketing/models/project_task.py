@@ -165,56 +165,56 @@ class ProjectTask(models.Model):
         }
 
     # Notification
-    @api.model
-    def create(self, vals):
-        task = super().create(vals)
-        message = f'{self.env.user.name} created task "{task.name}"'
+    # @api.model
+    # def create(self, vals):
+    #     task = super().create(vals)
+    #     message = f'{self.env.user.name} created task "{task.name}"'
 
-        # 🔴 Gửi realtime
-        self.env["bus.bus"]._sendone(
-            (self.env.cr.dbname, "notification_channel", self.env.uid),
-            "notification",
-            {"message": message},
-        )
+    #     # 🔴 Gửi realtime
+    #     self.env["bus.bus"]._sendone(
+    #         (self.env.cr.dbname, "notification_channel", self.env.uid),
+    #         "notification",
+    #         {"message": message},
+    #     )
 
-        # ✅ Lưu lại
-        self.env["custom.notification"].create({
-            "user_id": self.env.uid,
-            "message": message,
-        })
+    #     # ✅ Lưu lại
+    #     self.env["custom.notification"].create({
+    #         "user_id": self.env.uid,
+    #         "message": message,
+    #     })
 
-        return task
+    #     return task
 
-    def write(self, vals):
-        res = super().write(vals)
-        for task in self:
-            message = f'{self.env.user.name} updated "{task.name}"'
-            self.env["bus.bus"]._sendone(
-                (self.env.cr.dbname, "notification_channel", self.env.uid),
-                "notification",
-                {"message": message},
-            )
-            self.env["custom.notification"].create({
-                "user_id": self.env.uid,
-                "message": message,
-            })
-        return res
+    # def write(self, vals):
+    #     res = super().write(vals)
+    #     for task in self:
+    #         message = f'{self.env.user.name} updated "{task.name}"'
+    #         self.env["bus.bus"]._sendone(
+    #             (self.env.cr.dbname, "notification_channel", self.env.uid),
+    #             "notification",
+    #             {"message": message},
+    #         )
+    #         self.env["custom.notification"].create({
+    #             "user_id": self.env.uid,
+    #             "message": message,
+    #         })
+    #     return res
 
-    def message_post(self, **kwargs):
-        result = super().message_post(**kwargs)
-        if kwargs.get("body"):
-            for task in self:
-                message = f'{self.env.user.name} commented on "{task.name}"'
-                self.env["bus.bus"]._sendone(
-                    (self.env.cr.dbname, "notification_channel", self.env.uid),
-                    "notification",
-                    {"message": message},
-                )
-                self.env["custom.notification"].create({
-                    "user_id": self.env.uid,
-                    "message": message,
-                })
-        return result
+    # def message_post(self, **kwargs):
+    #     result = super().message_post(**kwargs)
+    #     if kwargs.get("body"):
+    #         for task in self:
+    #             message = f'{self.env.user.name} commented on "{task.name}"'
+    #             self.env["bus.bus"]._sendone(
+    #                 (self.env.cr.dbname, "notification_channel", self.env.uid),
+    #                 "notification",
+    #                 {"message": message},
+    #             )
+    #             self.env["custom.notification"].create({
+    #                 "user_id": self.env.uid,
+    #                 "message": message,
+    #             })
+    #     return result
     def action_open_in_new_tab(self):
         """Open the task in a new tab using client action"""
         self.ensure_one()
