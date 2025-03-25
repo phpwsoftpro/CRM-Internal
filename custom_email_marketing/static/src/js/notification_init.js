@@ -1,38 +1,63 @@
 /** @odoo-module **/
 
-import { busService } from "@bus/services/bus_service";
 import { Component, onMounted } from "@odoo/owl";
-import { registry } from "@web/core/registry";
+import { useService } from "@web/core/utils/hooks";
 
-if (!registry.category("services").contains("bus_service")) {
-    registry.category("services").add("bus_service", busService);
-}
+console.log("📡 Notification INIT loaded");
 
-function setupNotificationBus(env) {
-    const bus = env.services.bus_service;
-    bus.addChannel("notification_channel");
+function setupNotificationBus(bus, uid, dbname) {
+    const channel = [dbname, "notification_channel", uid];
+    bus.addChannel(channel);
+    console.log("📡 Added channel:", channel);
 
     bus.on("notification", null, (notificationsList) => {
+        console.log("📨 bus.on('notification') triggered:", notificationsList);
         for (const notif of notificationsList) {
-            if (notif.type === "notification" && notif.payload && notif.payload.message) {
+            const [db, chan, user_id] = notif.channel;
+            if (chan === "notification_channel" && user_id === uid) {
+                const msg = notif.message.message;
+
+                window.latestNotifications = window.latestNotifications || [];
+                window.latestNotifications.unshift(msg);
+
                 const dot = document.getElementById("notify_dot");
                 if (dot) dot.style.display = "block";
-                console.log("🔔 Realtime from bus:", notif.payload.message);
-                document.dispatchEvent(new CustomEvent("bus_notification", { detail: notif.payload }));
+
+                console.log("🔔 New Notification:", msg);
             }
         }
     });
 }
 
-export const NotificationInit = class extends Component {
-    setup() {
-        onMounted(() => {
-            setupNotificationBus(this.env);
-        });
-    }
-};
 
-NotificationInit.template = "<div></div>";
-registry.category("main_components").add("NotificationInit", {
-    Component: NotificationInit,
-});
+export class NotificationInit extends Component {
+    setup() {
+        const bus = useService("bus");
+        const user = useService("user");
+        const session = useService("session");
+
+        onMounted(() => {
+            const uid = user.userId;
+            const dbname = session.db;
+        
+            setupNotificationBus(bus, uid, dbname);
+        
+            // 👇 Gọi lấy thông báo lưu từ server
+            odoo.rpc({
+                route: "/notification/list",
+                params: {},
+            }).then((result) => {
+                console.log("📋 Lịch sử thông báo từ server:", result);
+        
+                window.latestNotifications = result;
+        
+                const dot = document.getElementById("notify_dot");
+                if (dot && result.length > 0) dot.style.display = "block";
+            });
+        });
+        
+    }
+}
+
+NotificationInit.template = "custom_email_marketing.NotificationInit";
+

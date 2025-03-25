@@ -1,14 +1,12 @@
 /** @odoo-module **/
 
-import { NotificationBell } from "@custom_email_marketing/js/notification_widget";
-import { registry } from "@web/core/registry";
+import { NotificationInit } from "@custom_email_marketing/js/notification_init";
 import { WebClient } from "@web/webclient/webclient";
 
+console.log("📡 Notification WebClient loaded");
+
+// ✅ Gắn NotificationInit vào WebClient mà KHÔNG override registry
 WebClient.components = {
     ...WebClient.components,
-    NotificationBell,
+    NotificationInit,
 };
-
-registry.category("main_components").add("web_client", {
-    Component: WebClient,
-});

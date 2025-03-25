@@ -70,7 +70,7 @@ function toggleNotificationPopup() {
         `;
     }
 
-    document.body.appendChild(popup);
+    document.body.appendChild(popup);   
 
     setTimeout(() => {
         const handler = (e) => {
@@ -92,16 +92,13 @@ function toggleNotificationPopup() {
 window.addEventListener("load", () => {
     const observer = new MutationObserver(() => {
         const controlPanel = document.querySelector(".o_control_panel");
-
-        const isProjectTaskPage = window.location.href.includes("model=project.task");
-
-        if (controlPanel && isProjectTaskPage && !document.getElementById("notify_bell")) {
+        if (controlPanel && !document.getElementById("notify_bell")) {
             injectNotificationBell();
         }
     });
 
+    // ✅ Gọi observe sau khi DOM đã sẵn sàng
     observer.observe(document.body, { childList: true, subtree: true });
 });
-
 
 export default {};  // Quan trọng để không bị lỗi module

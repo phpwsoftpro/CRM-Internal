@@ -168,33 +168,50 @@ class ProjectTask(models.Model):
     @api.model
     def create(self, vals):
         task = super().create(vals)
+        message = f'{self.env.user.name} created task "{task.name}"'
+
+        # 🔴 Gửi realtime
         self.env["bus.bus"]._sendone(
-            "notification_channel",  # channel
-            "notification",  # type
-            {"message": f'{self.env.user.name} created task "{task.name}"'},  # message
+            (self.env.cr.dbname, "notification_channel", self.env.uid),
+            "notification",
+            {"message": message},
         )
+
+        # ✅ Lưu lại
+        self.env["custom.notification"].create({
+            "user_id": self.env.uid,
+            "message": message,
+        })
+
         return task
 
     def write(self, vals):
         res = super().write(vals)
-        if "stage_id" in vals:
-            for task in self:
-                self.env["bus.bus"]._sendone(
-                    "notification_channel",
-                    "notification",
-                    {
-                        "message": f'{self.env.user.name} moved task "{task.name}" to stage "{task.stage_id.name}"'
-                    },
-                )
+        for task in self:
+            message = f'{self.env.user.name} updated "{task.name}"'
+            self.env["bus.bus"]._sendone(
+                (self.env.cr.dbname, "notification_channel", self.env.uid),
+                "notification",
+                {"message": message},
+            )
+            self.env["custom.notification"].create({
+                "user_id": self.env.uid,
+                "message": message,
+            })
         return res
 
     def message_post(self, **kwargs):
         result = super().message_post(**kwargs)
         if kwargs.get("body"):
             for task in self:
+                message = f'{self.env.user.name} commented on "{task.name}"'
                 self.env["bus.bus"]._sendone(
-                    "notification_channel",
+                    (self.env.cr.dbname, "notification_channel", self.env.uid),
                     "notification",
-                    {"message": f'{self.env.user.name} commented on "{task.name}"'},
+                    {"message": message},
                 )
+                self.env["custom.notification"].create({
+                    "user_id": self.env.uid,
+                    "message": message,
+                })
         return result
