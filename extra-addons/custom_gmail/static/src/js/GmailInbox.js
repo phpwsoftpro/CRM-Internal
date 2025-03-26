@@ -1,15 +1,15 @@
 /** @odoo-module **/
 
 import { Component, onMounted } from "@odoo/owl";
-import { registry } from "@web/core/registry";
-import { initialState } from "./state";
-import { toggleStar, onReply, onReplyAll, onForward } from "./functions/index";
-import { toggleDropdown, toggleDropdownVertical, toggleAccounts, toggleDropdownAccount, toggleSelectAll, prevPage, nextPage, onRefresh, onMoreActions, showIcons, hideIcons, getInitialBgColor, getInitialColor, getStatusText, toggleSelect, toggleThreadMessage } from "./uiUtils";
-import { saveStarredState, loadStarredState } from "./storageUtils";
-import { initCKEditor, loadCKEditor } from "./ckeditor";
-import { openComposeModal } from "./functions/openComposeModal";
-import template from "./template";
 import { rpc } from "@web/core/network/rpc";
+import { registry } from "@web/core/registry";
+import { initCKEditor, loadCKEditor } from "./ckeditor";
+import { onForward, onReply, onReplyAll, toggleStar } from "./functions/index";
+import { openComposeModal } from "./functions/openComposeModal";
+import { initialState } from "./state";
+import { loadStarredState, saveStarredState } from "./storageUtils";
+import template from "./template";
+import { getInitialBgColor, getInitialColor, getStatusText, hideIcons, nextPage, onMoreActions, onRefresh, prevPage, showIcons, toggleAccounts, toggleDropdown, toggleDropdownAccount, toggleDropdownVertical, toggleSelect, toggleSelectAll, toggleThreadMessage } from "./uiUtils";
 export class GmailInbox extends Component {
     setup() {
         this.state = initialState();
