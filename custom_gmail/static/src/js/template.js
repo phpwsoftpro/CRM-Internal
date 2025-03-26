@@ -162,12 +162,6 @@ export default xml`
                                 <div class="email-info">
                                     <div class="email-header">
                                         <div class="email-from"><t t-esc="msg.sender"/></div>
-                                        <div class="email-actions" t-attf-class="{{msg.showIcons ? 'visible' : 'hidden'}}">
-                                            <span class="icon archive" title="Archive"><i class="fa fa-archive"></i></span>
-                                            <span class="icon delete" title="Delete"><i class="fa fa-trash"></i></span>
-                                            <span class="icon mark-read" title="Mark as Read"><i class="fa fa-envelope"></i></span>
-                                            <span class="icon reply" title="Reply"><i class="fa fa-clock-o"></i></span>
-                                        </div>
                                         <div class="email-date"><t t-esc="msg.date_received"/></div>
                                     </div>
                                     <div class="email-content">
@@ -206,10 +200,7 @@ export default xml`
                                                 <img class="sender-avatar" t-att-src="threadMsg.avatar || '/path/to/default-avatar.png'" alt="avatar" />
                                                 <div class="sender-details">
                                                     <div class="sender-line">
-                                                        <strong class="sender-name"><t t-esc="threadMsg.email_sender"/></strong>
-                                                        <span class="sender-email">
-                                                            &lt;<t t-esc="threadMsg.email"/>&gt;
-                                                        </span>
+                                                        <strong class="sender-name"><t t-esc="threadMsg.sender"/></strong>
                                                     </div>
                                                     <div class="recipient-line">
                                                         đến tôi <span class="dropdown-arrow"><i class="fa fa-caret-down"></i></span>

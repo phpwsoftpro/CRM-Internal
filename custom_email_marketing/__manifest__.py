@@ -17,6 +17,8 @@
             "custom_email_marketing/static/src/css/custom.css",
             "custom_email_marketing/static/src/js/chatter_filter.js",
             "custom_email_marketing/static/src/js/chatter_button_order.js",
+            "custom_email_marketing/static/src/js/template_notification.js",
+            "custom_email_marketing/static/src/js/notification_task_kanban.js",
         ],
         'web.assets_qweb': [],
     },
