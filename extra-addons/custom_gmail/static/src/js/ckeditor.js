@@ -38,7 +38,7 @@ export async function initCKEditor() {
         if (el && window.ClassicEditor) {
             ClassicEditor.create(el)
                 .then(editor => {
-                    this.editorInstance = editor; // ✅ Gán đúng
+                    window.editorInstance = editor; // ✅ Gán đúng
                 })
                 .catch(error => {
                     console.error("Error loading CKEditor:", error);
@@ -46,4 +46,3 @@ export async function initCKEditor() {
         }
     }, 100);
 }
-
