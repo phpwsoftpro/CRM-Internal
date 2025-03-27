@@ -676,10 +676,9 @@
     margin-left: 250px;
 }
 .email-list {
-    height: 100vh;
+    height: 70%;
     max-width: 500px; 
-    overflow: auto;
-    min-height: 100vh; 
+    overflow: auto; 
 }
 
 .email-detail {
