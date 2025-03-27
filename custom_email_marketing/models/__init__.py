@@ -7,4 +7,4 @@ from . import industries
 
 from . import send_task_email_wizard
 from . import project_task
-from . import project_project
+from . import mail_mail
