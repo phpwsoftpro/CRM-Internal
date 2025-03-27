@@ -102,7 +102,7 @@
                     <select id="chatter_filter_select" class="form-select">
                         <option value="all">All</option>
                         <option value="message">Message</option>
-                        <option value="note">Log note</option>
+                        <option value="note">Comment</option>
                         <option value="activity">Activities</option>
                     </select>
                 </div>

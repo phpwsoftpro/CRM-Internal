@@ -57,7 +57,4 @@ class MailComposer(models.TransientModel):
             vals["body"] = self._add_signature_once(vals["body"])
         return super().create(vals)
 
-    def send_mail_action(self):
-        """Override gửi mail trực tiếp nếu cần"""
-        _logger.info(f"Sending mail with signature from {self.env.user.display_name}")
-        return super().send_mail_action()
+

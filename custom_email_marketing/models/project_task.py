@@ -223,3 +223,18 @@ class ProjectTask(models.Model):
             'url': '/web#id=%d&model=project.task&view_type=form' % self.id,
             'target': 'new',
         }
+    # @api.model
+    # def write(self, vals):
+    #     res = super().write(vals)
+    #     if 'stage_id' in vals:
+    #         for task in self:
+    #             task.env['bus.bus'].sendone(
+    #                 'task.move',
+    #                 {
+    #                     'task_id': task.id,
+    #                     'task_name': task.name,
+    #                     'new_stage': task.stage_id.name,
+    #                     'user': task.env.user.name,
+    #                 }
+    #             )
+    #     return res
