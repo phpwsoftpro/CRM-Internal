@@ -1,12 +1,36 @@
 /** @odoo-module **/
 
-import { NotificationInit } from "@custom_email_marketing/js/notification_init";
-import { WebClient } from "@web/webclient/webclient";
+let notifications = window.notifications || [];
 
-console.log("📡 Notification WebClient loaded");
+function observeKanbanTaskMove() {
+    const observer = new MutationObserver((mutationsList) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === "childList") {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.classList && node.classList.contains("oe_kanban_global_click")) {
+                        // Khi task được thêm vào cột mới
+                        const dot = document.getElementById("notify_dot");
+                        if (dot) dot.style.display = "block";
+                        notifications.push("📝 A task was moved to another column.");
+                        console.log("✅ Task moved!");
+                    }
+                });
+            }
+        }
+    });
 
-// ✅ Gắn NotificationInit vào WebClient mà KHÔNG override registry
-WebClient.components = {
-    ...WebClient.components,
-    NotificationInit,
-};
+    const columns = document.querySelectorAll(".o_kanban_group");
+    columns.forEach((col) => {
+        observer.observe(col, { childList: true });
+    });
+    console.log("👀 Kanban task move observer attached.");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const pageObserver = new MutationObserver(() => {
+        if (document.querySelector(".o_kanban_view")) {
+            observeKanbanTaskMove();
+        }
+    });
+    pageObserver.observe(document.body, { childList: true, subtree: true });
+});

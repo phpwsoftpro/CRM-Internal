@@ -18,8 +18,8 @@
             "custom_email_marketing/static/src/css/custom.css",
             "custom_email_marketing/static/src/js/chatter_filter.js",
             "custom_email_marketing/static/src/js/notification_init.js",
-            "custom_email_marketing/static/src/js/notification_webclient.js",
-            "custom_email_marketing/static/src/js/notification_widget.js",
+            # "custom_email_marketing/static/src/js/notification_webclient.js",
+            # "custom_email_marketing/static/src/js/notification_widget.js",
         ],
     },
     "data": [
