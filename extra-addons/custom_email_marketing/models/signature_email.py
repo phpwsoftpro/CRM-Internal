@@ -1,58 +1,60 @@
-from odoo import models, fields
+from odoo import models, api, _
 import logging
 
 _logger = logging.getLogger(__name__)
 
 
-class ResUsers(models.Model):
-    _inherit = "res.users"
+class MailComposer(models.TransientModel):
+    _inherit = "mail.compose.message"
 
-    email_signature = fields.Html(
-        string="Email Signature", help="Signature to include in emails."
-    )
-    email_image = fields.Binary(
-        string="Email Image", help="Image to include in email signature."
-    )
+    def _get_signature_template(self):
+        """Generate HTML signature template for current user"""
+        user = self.env.user
+        company = self.env.company
 
-
-class MailingMailing(models.Model):
-    _inherit = "mailing.mailing"
-
-    def send_mail(self, **kwargs):
-        current_user = self.env.user
-        default_signature = (
-            self.env["ir.config_parameter"]
-            .sudo()
-            .get_param("default_email_signature", default="")
-        )
-
-        for mailing in self:
-            # Lấy thông tin người dùng hoặc sử dụng chữ ký mặc định
-            user_signature = current_user.email_signature or default_signature
-            image_url = (
-                f"/web/image?model=res.users&id={current_user.id}&field=email_image"
-                if current_user.email_image
-                else ""
-            )
-
-            # Log đường dẫn ảnh
-            _logger.info("Image URL: %s", image_url)
-
-            # Chữ ký HTML
-            signature_html = f"""
-            <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
-                {user_signature}
-                {f'<img src="{image_url}" alt="User Image" style="width: 80px; height: 80px; border-radius: 50%; margin-top: 10px;">' if image_url else ''}
+        signature_template = f"""
+            <div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #e5e5e5;">
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+                <table cellpadding="0" cellspacing="0" style="font-family: Poppins, sans-serif; color: #333333; width: 100%; max-width: 600px;">
+                    <tr>
+                        <td style="width: 150px; vertical-align: top; padding-right: 20px;">
+                            <img src="/web/image/res.company/{company.id}/logo" alt="{company.name}" style="width: 120px; height: auto;"/>
+                        </td>
+                        <td style="vertical-align: top;">
+                            <div style="font-size: 18px; font-weight: 650; margin-bottom: 5px;">Vanessa Ha</div>
+                            <div style="color: black; margin-bottom: 5px; font-size: 15px; font-weight: 500;">Project Manager</div>
+                            <div style="margin-bottom: 10px; font-weight: 600;">WSOFTPRO</div>
+                            <hr />
+                            <div style="margin: 4px 0;">
+                                <span>📞</span> <a href="tel:+84393558941" style="color: black; margin-left: 10px; font-size: 15px;">(+84) 393 558 941</a>
+                            </div>
+                            <div style="margin: 4px 0;">
+                                <span>✉️</span> <a href="mailto:vanessa@wsoftpro.com" style="color: black; margin-left: 10px; font-size: mailto:15px;">vanessa@wsoftpro.com</a>
+                            </div>
+                            <div style="margin: 4px 0;">
+                                <span>🌐</span> <a href="https://wsoftpro.com/" target="_blank" style="color: black; margin-left: 10px; font-size: 15px;">https://wsoftpro.com/</a>
+                            </div>
+                            <div style="margin: 4px 0;">
+                                <span>📍</span> <span style="color: black; margin-left: 10px; font-size: 15px;">7/26 Nguyen Hong, Dong Da, Hanoi, Vietnam</span>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
             </div>
             """
+        return signature_template
 
-            # Log chữ ký HTML
-            _logger.info("Generated Signature HTML: %s", signature_html)
+    def _add_signature_once(self, content):
+        signature_html = self._get_signature_template()
+        if signature_html not in content:
+            return f"{content}<br>{signature_html}"
+        return content
 
-            # Gắn chữ ký vào nội dung email
-            mailing.body_html += signature_html
+    @api.model
+    def create(self, vals):
+        """Gắn chữ ký khi tạo mới"""
+        if vals.get("body") and not vals.get("template_id"):
+            vals["body"] = self._add_signature_once(vals["body"])
+        return super().create(vals)
 
-            # Log nội dung body_html sau khi thêm chữ ký
-            _logger.info("Updated Email Body HTML: %s", mailing.body_html)
 
-        return super(MailingMailing, self).send_mail(**kwargs)
