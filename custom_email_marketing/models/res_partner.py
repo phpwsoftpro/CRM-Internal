@@ -15,7 +15,6 @@ class ResPartner(models.Model):
         compute="_compute_last_activity_date",
         help="Date of last email sent to this contact",
     )
-
     last_modified_date = fields.Datetime(
         string="Last Modified Date (GMT+7)",
         # compute="_compute_last_modified_date",

@@ -1,3 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_res_partner_custom,res.partner.custom,model_res_partner,,1,1,1,1
 access_tech_stack_user,tech.stack.user,model_tech_stack,,1,1,1,1
+access_custom_notification_user,access_custom_notification_user,model_custom_notification,base.group_user,1,1,1,0
