@@ -22,22 +22,16 @@ class GmailInboxController(http.Controller):
                     ("is_gmail", "=", True),
                 ],
                 order="date_received desc",
-                limit=20,
+                limit=1000,
             )
         )
 
         result = []
         for msg in messages:
             # Xử lý rút gọn nội dung HTML (tránh dài quá mức)
-            short_body = ""
             if msg.body:
                 soup = BeautifulSoup(msg.body, "html.parser")
                 text_preview = soup.get_text()
-                short_body = (
-                    (text_preview[:150] + "...")
-                    if len(text_preview) > 150
-                    else text_preview
-                )
 
             attachments = (
                 request.env["ir.attachment"]
@@ -70,7 +64,7 @@ class GmailInboxController(http.Controller):
                         if msg.date_received
                         else ""
                     ),
-                    "body": short_body or "No Content",
+                    "body": text_preview or "No Content",
                     "attachments": attachment_list,
                 }
             )
