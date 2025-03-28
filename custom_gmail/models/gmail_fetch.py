@@ -5,43 +5,74 @@ from odoo import models, api
 _logger = logging.getLogger(__name__)
 
 
+import requests
+import logging
+from odoo import models, api
+
+_logger = logging.getLogger(__name__)
+
+
 class GmailFetch(models.Model):
     _inherit = "mail.message"
 
     @api.model
     def action_redirect_gmail_auth(self):
         """
-        Fetch Gmail messages using the stored access token. If fetching fails, redirect
-        to Google's OAuth2 consent screen for authentication.
+        Redirect người dùng đến màn xác thực Gmail nếu access_token bị thiếu,
+        hết hạn, hoặc không có đủ quyền (ví dụ thiếu quyền gửi mail).
         """
-        _logger.debug("Checking if a Gmail access token exists.")
-
         config_params = self.env["ir.config_parameter"].sudo()
+
+        # 🔁 Xoá token cũ để đảm bảo Google cấp lại đầy đủ scope
+        config_params.set_param("gmail_access_token", "")
+        config_params.set_param("gmail_refresh_token", "")
+        config_params.set_param("gmail_authenticated_email", "")
+
         access_token = config_params.get_param("gmail_access_token")
 
+        # Nếu có access_token thì thử xác thực
         if access_token:
-            _logger.info("Using existing Gmail access token: %s", access_token)
-            try:
-                self.fetch_gmail_messages(access_token)
-                return {"type": "ir.actions.client", "tag": "reload"}
-            except Exception as e:
-                _logger.error(
-                    "Failed to fetch Gmail messages with existing token: %s", str(e)
-                )
+            headers = {"Authorization": f"Bearer {access_token}"}
+            profile_response = requests.get(
+                "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+                headers=headers,
+            )
 
-        _logger.debug(
-            "No valid access token found or token failed. Redirecting to Google's OAuth2 consent screen."
-        )
+            if profile_response.status_code == 200:
+                email_address = profile_response.json().get("emailAddress")
+                config_params.set_param("gmail_authenticated_email", email_address)
+                _logger.info("Authenticated Gmail address: %s", email_address)
+
+                try:
+                    self.fetch_gmail_messages(access_token)
+                    return {"type": "ir.actions.client", "tag": "reload"}
+                except Exception as e:
+                    _logger.warning("Access token có thể thiếu quyền: %s", str(e))
+
+            _logger.warning("Access token is invalid or lacks permission.")
+
+        # Cấu hình OAuth2
+        _logger.debug("Redirecting to Google's OAuth2 consent screen.")
         config = self.get_google_config()
-        scope = "https://www.googleapis.com/auth/gmail.readonly"
+
+        scope = (
+            "https://www.googleapis.com/auth/gmail.readonly "
+            "https://www.googleapis.com/auth/gmail.send"
+        )
+
+        # ✅ Bắt buộc Google hiện lại cửa sổ chọn tài khoản + cấp refresh token mới
         auth_url = (
             f"{config['auth_uri']}?response_type=code"
             f"&client_id={config['client_id']}"
             f"&redirect_uri={config['redirect_uri']}"
-            f"&scope={scope}"
+            f"&scope={scope.replace(' ', '%20')}"
             f"&access_type=offline"
+            f"&prompt=consent%20select_account"
+            f"&include_granted_scopes=false"
         )
+
         _logger.info("Redirect URL generated: %s", auth_url)
+
         return {
             "type": "ir.actions.act_url",
             "url": str(auth_url),

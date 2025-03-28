@@ -1,5 +1,13 @@
 /** @odoo-module **/
 
+import UploadImageAdapter from './upload_adapter';
+
+function MyCustomUploadPlugin(editor) {
+    editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
+        return new UploadImageAdapter(loader);
+    };
+}
+
 export function loadCKEditor() {
     return new Promise((resolve, reject) => {
         if (!document.getElementById("ckeditor_script")) {
@@ -15,17 +23,11 @@ export function loadCKEditor() {
             };
             document.head.appendChild(script);
         } else if (window.ClassicEditor) {
-            // CKEditor đã tải rồi
             resolve();
         } else {
-            // Nếu script đang được tải, chờ nó hoàn tất
             const existingScript = document.getElementById("ckeditor_script");
-            existingScript.onload = () => {
-                resolve();
-            };
-            existingScript.onerror = () => {
-                reject(new Error("Failed to load CKEditor"));
-            };
+            existingScript.onload = () => resolve();
+            existingScript.onerror = () => reject(new Error("Failed to load CKEditor"));
         }
     });
 }
@@ -33,16 +35,20 @@ export function loadCKEditor() {
 export async function initCKEditor() {
     await loadCKEditor();
 
-    setTimeout(() => {
-        const el = document.querySelector("#compose_body");
-        if (el && window.ClassicEditor) {
-            ClassicEditor.create(el)
-                .then(editor => {
-                    window.editorInstance = editor; // ✅ Gán đúng
-                })
-                .catch(error => {
-                    console.error("Error loading CKEditor:", error);
-                });
-        }
-    }, 100);
+    const el = document.querySelector("#compose_body");
+    if (el && window.ClassicEditor) {
+        window.ClassicEditor
+            .create(el, {
+                extraPlugins: [ MyCustomUploadPlugin ],
+            })
+            .then(editor => {
+                window.editorInstance = editor;
+                console.log("CKEditor initialized!");
+            })
+            .catch(error => {
+                console.error("Error initializing CKEditor:", error);
+            });
+    } else {
+        console.warn("Editor element not found or CKEditor not available.");
+    }
 }
