@@ -125,31 +125,41 @@ export class GmailInbox extends Component {
             return;
         }
     
-        rpc('/web/dataset/call_kw/mail.mail/create_and_send_email', {
-            model: 'mail.mail',
-            method: 'create_and_send_email',
-            args: [{
-                email_to: to,
+        fetch('/api/send_email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest', // Odoo expects this
+            },
+            body: JSON.stringify({
+                to: to,
                 subject: subject,
                 body_html: body,
-            }],
-            kwargs: {},
-        }).then(() => {
-            alert("Đã gửi email thành công!");
-            this.state.showComposeModal = false;
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert("Đã gửi email thành công!");
+                this.state.showComposeModal = false;
     
-            if (window.editorInstance) {
-                window.editorInstance.destroy();
-                window.editorInstance = null;
+                if (window.editorInstance) {
+                    window.editorInstance.destroy();
+                    window.editorInstance = null;
+                }
+    
+                document.querySelector('.compose-input.to').value = '';
+                document.querySelector('.compose-input.subject').value = '';
+            } else {
+                throw new Error(data.message || 'Gửi mail thất bại');
             }
-    
-            document.querySelector('.compose-input.to').value = '';
-            document.querySelector('.compose-input.subject').value = '';
-        }).catch((err) => {
-            console.error("Lỗi khi gửi RPC:", err);
+        })
+        .catch(err => {
+            console.error("Lỗi khi gửi email:", err);
             alert("Có lỗi xảy ra khi gửi email.");
         });
     }
+    
     
     
     
