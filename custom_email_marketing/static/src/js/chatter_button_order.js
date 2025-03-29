@@ -32,6 +32,9 @@ function updateButtons() {
         if (noteBtn.textContent.trim() === "Log note") {
             noteBtn.textContent = "Comment";
         }
+        if (sendBtn.textContent.trim() === "Send message") {
+            sendBtn.textContent = "Send Email";
+        }
         return true;
     }
 
