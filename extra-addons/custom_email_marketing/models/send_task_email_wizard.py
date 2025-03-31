@@ -7,19 +7,16 @@ class TaskEmailHistory(models.Model):
     _description = "Store last email details per task"
 
     task_id = fields.Many2one("project.task", string="Task", required=True, ondelete="cascade")
-    user_id = fields.Many2one("res.users", string="User", required=True)
     last_email_to = fields.Char(string="Last Recipient Email") 
     last_subject = fields.Char(string="Last Subject")
     last_message_id = fields.Char(string="Last Message-ID")
     last_body_html = fields.Html(string="Last Body", sanitize=False)  
     last_email_cc = fields.Char(string="Last CC", sanitize=False)
+
     _sql_constraints = [
-        (
-            "task_user_unique",
-            "unique(task_id, user_id)",
-            "Only one email history per task and user is allowed!",
-        )
+        ("task_unique", "unique(task_id)", "Only one email history per task is allowed!"),
     ]
+
 
 
 class SendTaskEmailWizard(models.TransientModel):
@@ -74,32 +71,36 @@ class SendTaskEmailWizard(models.TransientModel):
 
     @api.model
     def default_get(self, fields_list):
-        """Lấy mặc định Customer email khi mở wizard và lưu trữ thông tin email theo task"""
         res = super(SendTaskEmailWizard, self).default_get(fields_list)
-
-        # Get the current task ID
         active_id = self.env.context.get("active_id")
+
         if active_id:
             res["task_id"] = active_id
-
-            # Get last email data for this task and user
             email_history = self.env["task.email.history"].search(
-                [("task_id", "=", active_id), ("user_id", "=", self.env.user.id)],
+                [("task_id", "=", active_id)],
                 limit=1,
             )
 
+            # Nếu có lịch sử email thì mới set các giá trị
             if email_history:
-                res["email_to"] = email_history.last_email_to
-                res["email_subject"] = email_history.last_subject
-                res["message_id"] = email_history.last_message_id
-                res["body_html"] = email_history.last_body_html
-                res["email_cc"] = email_history.last_email_cc
+                if email_history.last_email_to:
+                    res["email_to"] = email_history.last_email_to
+                if email_history.last_subject:
+                    res["email_subject"] = email_history.last_subject
+                if email_history.last_message_id:
+                    res["message_id"] = email_history.last_message_id
+                if email_history.last_body_html:
+                    res["body_html"] = email_history.last_body_html
+                if email_history.last_email_cc:
+                    res["email_cc"] = email_history.last_email_cc
 
-        # Default email recipient
-        if "default_email_to" in self.env.context:
-            res["email_to"] = self.env.context.get("default_email_to")
+        # Chỉ gán nếu context có default_email_to và res chưa có email_to
+        if not res.get("email_to") and "default_email_to" in self.env.context:
+            default_email = self.env.context.get("default_email_to")
+            if default_email:
+                res["email_to"] = default_email
 
-        # Default signature
+        # Gán chữ ký nếu body_html đang trống
         if not res.get("body_html"):
             signature = self._get_signature_template()
             res["body_html"] = f"<p><br/></p>{signature}"
@@ -107,21 +108,17 @@ class SendTaskEmailWizard(models.TransientModel):
         return res
 
     def save_draft(self):
-        """Lưu tạm thời Subject, Message-ID và Body mà không gửi email"""
-        self.ensure_one()  # Đảm bảo chỉ có một record được thao tác
-
+        self.ensure_one()
         task = self.env["project.task"].browse(self.env.context.get("active_id"))
         if not task:
             raise UserError("Không tìm thấy Task để lưu tạm!")
 
-        # Lấy dữ liệu email đã lưu trước đó
         email_history = self.env["task.email.history"].search(
-            [("task_id", "=", task.id), ("user_id", "=", self.env.user.id)], limit=1
+            [("task_id", "=", task.id)], limit=1
         )
 
         history_vals = {
             "task_id": task.id,
-            "user_id": self.env.user.id,
             "last_email_to": self.email_to,
             "last_subject": self.email_subject,
             "last_message_id": self.message_id,
@@ -139,12 +136,11 @@ class SendTaskEmailWizard(models.TransientModel):
             "tag": "display_notification",
             "params": {
                 "title": "Lưu thành công!",
-                "message": "Email subject, Message-ID và nội dung đã được lưu tạm thời.",
+                "message": "Nội dung email đã được lưu cho tất cả người dùng.",
                 "type": "success",
                 "sticky": False,
             },
         }
-
     def send_email(self):
         """Gửi email phản hồi theo Message-ID nhập từ Gmail và lưu thông tin gửi"""
         if not self.email_to:
@@ -153,21 +149,24 @@ class SendTaskEmailWizard(models.TransientModel):
         task = self.env["project.task"].browse(self.env.context.get("active_id"))
         attachment_ids = self.attachment_ids.ids if self.attachment_ids else []
 
-        # Xác định headers nếu là email phản hồi
+        # Headers cho email reply
         headers = {}
         if self.message_id:
             headers["In-Reply-To"] = f"<{self.message_id}>"
             headers["References"] = f"<{self.message_id}>"
-        mail_server = self.env['ir.mail_server'].search([], limit=1)  
+
+        # Lấy thông tin người gửi
+        mail_server = self.env["ir.mail_server"].search([], limit=1)
         email_from = mail_server.smtp_user if mail_server else self.env.user.email or "no-reply@example.com"
 
+        # Tạo mail
         mail_values = {
             "subject": self.email_subject,
             "body_html": self.body_html,
             "email_to": self.email_to,
             "email_cc": self.email_cc,
-            "email_from": email_from,  
-            "reply_to": email_from,  
+            "email_from": email_from,
+            "reply_to": email_from,
             "headers": headers,
             "attachment_ids": [(6, 0, attachment_ids)] if attachment_ids else [],
         }
@@ -175,28 +174,31 @@ class SendTaskEmailWizard(models.TransientModel):
         mail = self.env["mail.mail"].create(mail_values)
         mail.send()
 
-        # Save the email details for this task
+        # Lưu lại thông tin email vào bảng lưu tạm (dùng chung cho task, không theo user)
         if task:
             email_history = self.env["task.email.history"].search(
-                [("task_id", "=", task.id), ("user_id", "=", self.env.user.id)], limit=1
+                [("task_id", "=", task.id)], limit=1
             )
 
             history_vals = {
                 "last_subject": self.email_subject,
                 "last_message_id": self.message_id,
+                "last_body_html": self.body_html,
+                "last_email_to": self.email_to,
+                "last_email_cc": self.email_cc,
             }
 
             if email_history:
                 email_history.write(history_vals)
             else:
-                self.env["task.email.history"].create(
-                    {"task_id": task.id, "user_id": self.env.user.id, **history_vals}
-                )
+                self.env["task.email.history"].create({
+                    "task_id": task.id,
+                    **history_vals
+                })
 
-            # Create a mail.message directly instead of using message_post
-            self.env["mail.message"].create(
-                {
-                    "body": f"""
+            # Tạo mail.message cho task
+            self.env["mail.message"].create({
+                "body": f"""
                     <div>
                         <div style="margin-top: 15px; border-top: 1px solid #ddd; padding-top: 15px;">
                             {self.body_html}
@@ -204,18 +206,15 @@ class SendTaskEmailWizard(models.TransientModel):
                         {f'<div style="margin-top: 10px;"><strong>Attachments:</strong> {len(attachment_ids)} files</div>' if attachment_ids else ''}
                     </div>
                 """,
-                    "subject": self.email_subject,
-                    "message_type": "comment",
-                    "subtype_id": self.env.ref("mail.mt_comment").id,
-                    "model": "project.task",
-                    "res_id": task.id,
-                    "author_id": self.env.user.partner_id.id,
-                    "email_from": self.env.user.email,
-                    "attachment_ids": (
-                        [(6, 0, attachment_ids)] if attachment_ids else []
-                    ),
-                    "date": fields.Datetime.now(),
-                }
-            )
+                "subject": self.email_subject,
+                "message_type": "comment",
+                "subtype_id": self.env.ref("mail.mt_comment").id,
+                "model": "project.task",
+                "res_id": task.id,
+                "author_id": self.env.user.partner_id.id,
+                "email_from": email_from,
+                "attachment_ids": [(6, 0, attachment_ids)] if attachment_ids else [],
+                "date": fields.Datetime.now(),
+            })
 
-            return {"type": "ir.actions.act_window_close"}
+        return {"type": "ir.actions.act_window_close"}
