@@ -5,13 +5,6 @@ from odoo import models, api
 _logger = logging.getLogger(__name__)
 
 
-import requests
-import logging
-from odoo import models, api
-
-_logger = logging.getLogger(__name__)
-
-
 class GmailFetch(models.Model):
     _inherit = "mail.message"
 
@@ -82,39 +75,48 @@ class GmailFetch(models.Model):
     @api.model
     def fetch_gmail_messages(self, access_token):
         """
-        Fetch the latest 15 Gmail messages and process new emails only.
-        Avoids fetching beyond the last 15 messages for optimization.
+        Fetch the latest 15 Gmail messages and store new ones.
         """
-        _logger.debug("Fetching Gmail messages with access token.")
+
+        def extract_body_from_payload(payload):
+            """Đệ quy để lấy phần text/html body"""
+            mime_type = payload.get("mimeType")
+            body_data = payload.get("body", {}).get("data")
+
+            if mime_type == "text/html" and body_data:
+                try:
+                    return base64.urlsafe_b64decode(body_data + "==").decode("utf-8")
+                except Exception as e:
+                    _logger.warning("Decode HTML body failed: %s", e)
+                    return ""
+            elif "parts" in payload:
+                for part in payload["parts"]:
+                    result = extract_body_from_payload(part)
+                    if result:
+                        return result
+            return ""
+
+        _logger.debug("Fetching Gmail messages...")
+
         url = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
         headers = {"Authorization": f"Bearer {access_token}"}
 
         processed_messages = []
         next_page_token = None
         fetched_count = 0
-        batch_size = 15  # Fetch emails in batches of 15
-        max_messages = 15  # Fetch only the latest 15 messages
-        last_fetched_email_id = (
-            self.env["ir.config_parameter"]
-            .sudo()
-            .get_param("gmail_last_fetched_email_id")
-        )
+        max_messages = 15
 
         existing_gmail_ids = set(
             self.search([], order="create_date desc", limit=15).mapped("gmail_id")
         )
-        _logger.debug("Fetched latest 15 Gmail IDs from Odoo for quick lookup.")
 
         while fetched_count < max_messages:
-            params = {"maxResults": batch_size}
+            params = {"maxResults": 15}
             if next_page_token:
                 params["pageToken"] = next_page_token
 
             response = requests.get(url, headers=headers, params=params)
-            _logger.debug("Gmail messages fetch response: %s", response.text)
-
             if response.status_code != 200:
-                _logger.error("Failed to fetch Gmail messages: %s", response.text)
                 raise ValueError(f"Failed to fetch Gmail messages: {response.text}")
 
             messages = response.json().get("messages", [])
@@ -125,143 +127,93 @@ class GmailFetch(models.Model):
 
             for msg in messages:
                 if fetched_count >= max_messages:
-                    _logger.info(
-                        "Reached maximum number of messages to fetch: %d", max_messages
-                    )
                     break
 
                 gmail_id = msg.get("id")
                 if gmail_id in existing_gmail_ids:
-                    _logger.info("Skipping already fetched Gmail ID: %s", gmail_id)
                     continue
 
                 message_url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{gmail_id}?format=full"
                 message_response = requests.get(message_url, headers=headers)
 
-                _logger.info(
-                    "Fetched raw email data for Gmail ID %s: %s",
-                    gmail_id,
-                    message_response.text,
+                if message_response.status_code != 200:
+                    continue
+
+                message_data = message_response.json()
+                payload = message_data.get("payload", {})
+                headers_list = payload.get("headers", [])
+
+                # Trích thông tin headers
+                subject = next(
+                    (
+                        h.get("value")
+                        for h in headers_list
+                        if h.get("name") == "Subject"
+                    ),
+                    "No Subject",
+                )
+                sender = next(
+                    (h.get("value") for h in headers_list if h.get("name") == "From"),
+                    "Unknown Sender",
+                )
+                receiver = next(
+                    (h.get("value") for h in headers_list if h.get("name") == "To"),
+                    "Unknown Receiver",
+                )
+                cc = next(
+                    (h.get("value") for h in headers_list if h.get("name") == "Cc"), ""
+                )
+                raw_date = next(
+                    (h.get("value") for h in headers_list if h.get("name") == "Date"),
+                    None,
                 )
 
-                if message_response.status_code == 200:
-                    message_data = message_response.json()
-                    payload = message_data.get("payload", {})
-                    headers_list = payload.get("headers", [])
+                date_received = self.parse_date(raw_date) if raw_date else None
 
-                    subject = next(
-                        (
-                            header.get("value")
-                            for header in headers_list
-                            if header.get("name") == "Subject"
-                        ),
-                        "No Subject",
-                    )
-                    sender = next(
-                        (
-                            header.get("value")
-                            for header in headers_list
-                            if header.get("name") == "From"
-                        ),
-                        "Unknown Sender",
-                    )
-                    receiver = next(
-                        (
-                            header.get("value")
-                            for header in headers_list
-                            if header.get("name") == "To"
-                        ),
-                        "Unknown Receiver",
-                    )
-                    cc = next(
-                        (
-                            header.get("value")
-                            for header in headers_list
-                            if header.get("name") == "Cc"
-                        ),
-                        "",
-                    )
-                    raw_date = next(
-                        (
-                            header.get("value")
-                            for header in headers_list
-                            if header.get("name") == "Date"
-                        ),
-                        None,
-                    )
-                    date_received = self.parse_date(raw_date) if raw_date else None
+                # ✅ Lấy body HTML (đệ quy)
+                body = extract_body_from_payload(payload)
 
-                    body = ""
-                    if "parts" in payload:
-                        for part in payload["parts"]:
-                            if part.get("mimeType") == "text/html":
-                                body = part.get("body", {}).get("data", "")
-                                break
-                            elif part.get("mimeType") == "text/plain" and not body:
-                                body = part.get("body", {}).get("data", "")
+                # Lưu vào mail.message
+                created_message = self.create(
+                    {
+                        "gmail_id": gmail_id,
+                        "is_gmail": True,
+                        "body": body,
+                        "subject": subject,
+                        "date_received": date_received,
+                        "message_type": "email",
+                        "author_id": self.env.user.partner_id.id,
+                        "email_sender": sender,
+                        "email_receiver": receiver,
+                        "email_cc": cc,
+                    }
+                )
 
-                    if body:
-                        import base64
+                # Ghi vào thông báo (nếu có dùng)
+                self.env["mail.notification"].sudo().create(
+                    {
+                        "mail_message_id": created_message.id,
+                        "res_partner_id": self.env.user.partner_id.id,
+                        "notification_type": "inbox",
+                        "is_read": False,
+                    }
+                )
 
-                        body = base64.urlsafe_b64decode(body).decode("utf-8")
+                processed_messages.append(
+                    {
+                        "id": gmail_id,
+                        "subject": subject,
+                        "sender": sender,
+                        "receiver": receiver,
+                        "cc": cc,
+                        "date_received": date_received,
+                        "body": body,
+                    }
+                )
 
-                    _logger.info(
-                        "Creating a new mail.message record for Gmail ID: %s", gmail_id
-                    )
-                    created_message = self.create(
-                        {
-                            "gmail_id": gmail_id,
-                            "is_gmail": True,
-                            "body": body,
-                            "subject": subject,
-                            "date_received": date_received,
-                            "message_type": "email",
-                            "author_id": self.env.user.partner_id.id,
-                            "email_sender": sender,
-                            "email_receiver": receiver,
-                            "email_cc": cc,
-                        }
-                    )
-                    processed_messages.append(
-                        {
-                            "id": gmail_id,
-                            "subject": subject,
-                            "sender": sender,
-                            "receiver": receiver,
-                            "cc": cc,
-                            "date_received": date_received,
-                            "body": body,
-                        }
-                    )
-                    fetched_count += 1
+                fetched_count += 1
 
-                    notification = (
-                        self.env["mail.notification"]
-                        .sudo()
-                        .create(
-                            {
-                                "mail_message_id": created_message.id,
-                                "res_partner_id": self.env.user.partner_id.id,
-                                "notification_type": "inbox",
-                                "is_read": False,
-                            }
-                        )
-                    )
-
-                    _logger.info(
-                        "Notification Created: ID=%s, Message ID=%s, Receiver ID=%s, Read Status=%s, Content=%s",
-                        notification.id,
-                        notification.mail_message_id.id,
-                        notification.res_partner_id.id,
-                        notification.is_read,
-                        body,
-                    )
-
-                    self.env["ir.config_parameter"].sudo().set_param(
-                        "gmail_last_fetched_email_id", gmail_id
-                    )
-
-            if fetched_count >= max_messages or not next_page_token:
+            if not next_page_token or fetched_count >= max_messages:
                 break
 
         return processed_messages

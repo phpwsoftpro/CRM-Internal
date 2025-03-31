@@ -1,6 +1,5 @@
 /** @odoo-module **/
-
-import { Component, onMounted } from "@odoo/owl";
+import { Component, markup, onMounted } from "@odoo/owl";
 import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
 import { initCKEditor, loadCKEditor } from "./ckeditor";
@@ -47,7 +46,10 @@ export class GmailInbox extends Component {
     async loadMessages() {
         try {
             const messages = await rpc('/gmail/messages', {});
-            this.state.messages = messages;
+            this.state.messages = messages.map(msg => ({
+                ...msg,
+                body: markup(msg.body),  // ✅ Đánh dấu HTML là an toàn để t-raw dùng
+            }));
         } catch (error) {
             console.error("Error fetching Gmail messages:", error);
         }
