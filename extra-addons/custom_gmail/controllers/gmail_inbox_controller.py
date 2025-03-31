@@ -37,11 +37,7 @@ class GmailInboxController(http.Controller):
 
         result = []
         for msg in messages:
-            # Xử lý rút gọn nội dung HTML (tránh dài quá mức)
-            if msg.body:
-                soup = BeautifulSoup(msg.body, "html.parser")
-                text_preview = soup.get_text()
-                short_body = text_preview + "..."
+            full_body = msg.body or "No Content"  # Giữ nguyên HTML gốc
 
             attachments = (
                 request.env["ir.attachment"]
@@ -59,6 +55,7 @@ class GmailInboxController(http.Controller):
                     "id": att.id,
                     "name": att.name,
                     "url": f"/web/content/{att.id}?download=true",
+                    "mimetype": att.mimetype,
                 }
                 for att in attachments
             ]
@@ -74,7 +71,7 @@ class GmailInboxController(http.Controller):
                         if msg.date_received
                         else ""
                     ),
-                    "body": text_preview or "No Content",
+                    "body": full_body,  # Dùng body HTML gốc
                     "attachments": attachment_list,
                 }
             )
