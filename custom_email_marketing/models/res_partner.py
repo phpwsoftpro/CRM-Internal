@@ -2,9 +2,6 @@ from odoo import models, fields, api
 from .industries import INDUSTRY_SELECTION
 from odoo.exceptions import ValidationError
 
-import logging
-
-_logger = logging.getLogger(__name__)
 
 
 class ResPartner(models.Model):
@@ -53,7 +50,10 @@ class ResPartner(models.Model):
     tech_stack_ids = fields.Many2many("tech.stack", string="Area (Techstack)")
     email = fields.Char(string="Email", required=True)
     website = fields.Char(string="Website")
-
+    company_url = fields.Char(
+        string='Company Link',
+        compute='_compute_company_url'
+    )
     @api.model
     def message_get_reply_to(self):
         reply_to = super(ResPartner, self).message_get_reply_to()
@@ -147,4 +147,21 @@ class ResPartner(models.Model):
             "views": [(False, "form")],
             "target": "new",
             "context": ctx,
+        }
+    
+    def action_open_company_in_new_tab(self):
+        self.ensure_one()
+        if self.parent_id:
+            return {
+                'type': 'ir.actions.act_url',
+                'url': f'/web#id={self.parent_id.id}&model=res.partner&view_type=form',
+                'target': 'new',
+            }
+    def action_open_contact_in_new_tab(self):
+        """Open the contact in a new tab using client action"""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/web#id=%d&model=res.partner&view_type=form' % self.id,
+            'target': 'new',
         }
