@@ -54,7 +54,8 @@ class GmailInboxController(http.Controller):
                 {
                     "id": att.id,
                     "name": att.name,
-                    "url": f"/web/content/{att.id}?download=true",
+                    "url": f"/web/content/{att.id}",  # ✅ cho preview
+                    "download_url": f"/web/content/{att.id}?download=true",  # tùy chọn
                     "mimetype": att.mimetype,
                 }
                 for att in attachments

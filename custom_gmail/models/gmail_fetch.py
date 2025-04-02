@@ -1,6 +1,9 @@
 import requests
 import logging
 from odoo import models, api
+import base64
+from lxml import html
+import mimetypes
 
 _logger = logging.getLogger(__name__)
 
@@ -74,50 +77,145 @@ class GmailFetch(models.Model):
 
     @api.model
     def fetch_gmail_messages(self, access_token):
-        """
-        Fetch the latest 15 Gmail messages and store new ones.
-        """
+        _logger.info("▶️ Bắt đầu fetch Gmail messages...")
 
-        def extract_body_from_payload(payload):
-            """Đệ quy để lấy phần text/html body"""
-            mime_type = payload.get("mimeType")
-            body_data = payload.get("body", {}).get("data")
-
-            if mime_type == "text/html" and body_data:
-                try:
-                    return base64.urlsafe_b64decode(body_data + "==").decode("utf-8")
-                except Exception as e:
-                    _logger.warning("Decode HTML body failed: %s", e)
-                    return ""
-            elif "parts" in payload:
-                for part in payload["parts"]:
-                    result = extract_body_from_payload(part)
-                    if result:
-                        return result
-            return ""
-
-        _logger.debug("Fetching Gmail messages...")
-
-        url = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
         headers = {"Authorization": f"Bearer {access_token}"}
-
-        processed_messages = []
-        next_page_token = None
-        fetched_count = 0
+        base_url = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
         max_messages = 15
+        fetched_count = 0
+        next_page_token = None
 
         existing_gmail_ids = set(
             self.search([], order="create_date desc", limit=15).mapped("gmail_id")
         )
+
+        def extract_all_html_parts(payload):
+            html_parts = []
+
+            def recurse(part):
+                mime_type = part.get("mimeType")
+                body_data = part.get("body", {}).get("data")
+                if mime_type == "text/html" and body_data:
+                    try:
+                        html_parts.append(
+                            base64.urlsafe_b64decode(body_data + "==").decode("utf-8")
+                        )
+                    except Exception as e:
+                        _logger.warning("❌ Decode HTML failed: %s", e)
+                for sub in part.get("parts", []):
+                    recurse(sub)
+
+            recurse(payload)
+            return "\n".join(html_parts) if html_parts else ""
+
+        def save_attachments(payload, gmail_msg_id, res_id):
+            saved_attachments = []
+
+            def recurse(part):
+                filename = part.get("filename")
+                body_info = part.get("body", {})
+                att_id = body_info.get("attachmentId")
+                content_id = part.get("headers", [])
+
+                # Lấy Content-ID (CID) nếu có
+                cid = next(
+                    (
+                        h.get("value").strip("<>")
+                        for h in content_id
+                        if h.get("name") == "Content-ID"
+                    ),
+                    None,
+                )
+
+                if filename and att_id:
+                    att_url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{gmail_msg_id}/attachments/{att_id}"
+                    att_response = requests.get(att_url, headers=headers)
+                    if att_response.status_code == 200:
+                        att_data = att_response.json().get("data")
+                        if att_data:
+                            try:
+                                file_data = base64.urlsafe_b64decode(att_data + "==")
+                            except Exception as e:
+                                _logger.warning(
+                                    "❌ Lỗi decode attachment %s: %s", filename, e
+                                )
+                                return
+
+                            # Dự đoán mimetype nếu Google API không trả về
+                            mimetype = (
+                                part.get("mimeType")
+                                or mimetypes.guess_type(filename)[0]
+                                or "application/octet-stream"
+                            )
+
+                            att_vals = {
+                                "name": filename,
+                                "datas": base64.b64encode(file_data).decode(
+                                    "utf-8"
+                                ),  # 🧠 decode để đúng định dạng Odoo
+                                "res_model": "mail.message",
+                                "res_id": res_id,
+                                "mimetype": mimetype,
+                                "type": "binary",
+                            }
+
+                            if cid:
+                                att_vals["description"] = (
+                                    cid  # Dùng để replace ảnh inline (cid)
+                                )
+
+                            att = self.env["ir.attachment"].sudo().create(att_vals)
+                            saved_attachments.append(att)
+                            _logger.debug(
+                                "✅ Attachment saved: %s - CID: %s - Type: %s",
+                                filename,
+                                cid,
+                                mimetype,
+                            )
+
+                for sub in part.get("parts", []):
+                    recurse(sub)
+
+            recurse(payload)
+            return saved_attachments
+
+        def replace_cid_links(html_body, attachments):
+            try:
+                tree = html.fromstring(html_body)
+                for img in tree.xpath("//img"):
+                    src = img.get("src", "")
+                    if src.startswith("cid:"):
+                        cid_name = src.replace("cid:", "").strip("<>")
+                        for att in attachments:
+                            # So sánh nhiều khả năng của CID
+                            possible_cids = [
+                                (att.description or "").strip("<>"),
+                                (att.description or "").split("@")[0],
+                                att.name or "",
+                            ]
+                            if cid_name in possible_cids:
+                                img.set("src", f"/web/content/{att.id}")
+                                _logger.debug(
+                                    "🔁 Replaced CID %s → /web/content/%s",
+                                    cid_name,
+                                    att.id,
+                                )
+                                break  # Tìm được là thoát, tránh lặp
+                return html.tostring(tree, encoding="unicode")
+            except Exception as e:
+                _logger.warning("⚠️ CID replacement failed: %s", e)
+                return html_body
+
+        processed_messages = []
 
         while fetched_count < max_messages:
             params = {"maxResults": 15}
             if next_page_token:
                 params["pageToken"] = next_page_token
 
-            response = requests.get(url, headers=headers, params=params)
+            response = requests.get(base_url, headers=headers, params=params)
             if response.status_code != 200:
-                raise ValueError(f"Failed to fetch Gmail messages: {response.text}")
+                raise ValueError(f"❌ Failed to fetch message list: {response.text}")
 
             messages = response.json().get("messages", [])
             next_page_token = response.json().get("nextPageToken")
@@ -131,54 +229,39 @@ class GmailFetch(models.Model):
 
                 gmail_id = msg.get("id")
                 if gmail_id in existing_gmail_ids:
+                    _logger.debug("⏭️ Bỏ qua vì đã tồn tại: %s", gmail_id)
                     continue
 
-                message_url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{gmail_id}?format=full"
-                message_response = requests.get(message_url, headers=headers)
-
+                detail_url = f"{base_url}/{gmail_id}?format=full"
+                message_response = requests.get(detail_url, headers=headers)
                 if message_response.status_code != 200:
+                    _logger.warning("❌ Lỗi khi lấy chi tiết message %s", gmail_id)
                     continue
 
-                message_data = message_response.json()
-                payload = message_data.get("payload", {})
+                msg_data = message_response.json()
+                payload = msg_data.get("payload", {})
                 headers_list = payload.get("headers", [])
 
-                # Trích thông tin headers
-                subject = next(
-                    (
-                        h.get("value")
-                        for h in headers_list
-                        if h.get("name") == "Subject"
-                    ),
-                    "No Subject",
-                )
-                sender = next(
-                    (h.get("value") for h in headers_list if h.get("name") == "From"),
-                    "Unknown Sender",
-                )
-                receiver = next(
-                    (h.get("value") for h in headers_list if h.get("name") == "To"),
-                    "Unknown Receiver",
-                )
-                cc = next(
-                    (h.get("value") for h in headers_list if h.get("name") == "Cc"), ""
-                )
-                raw_date = next(
-                    (h.get("value") for h in headers_list if h.get("name") == "Date"),
-                    None,
-                )
+                def get_header(name):
+                    return next(
+                        (h.get("value") for h in headers_list if h.get("name") == name),
+                        "",
+                    )
 
+                subject = get_header("Subject") or "No Subject"
+                sender = get_header("From")
+                receiver = get_header("To")
+                cc = get_header("Cc")
+                raw_date = get_header("Date")
                 date_received = self.parse_date(raw_date) if raw_date else None
 
-                # ✅ Lấy body HTML (đệ quy)
-                body = extract_body_from_payload(payload)
+                body_html = extract_all_html_parts(payload)
 
-                # Lưu vào mail.message
                 created_message = self.create(
                     {
                         "gmail_id": gmail_id,
                         "is_gmail": True,
-                        "body": body,
+                        "body": body_html,
                         "subject": subject,
                         "date_received": date_received,
                         "message_type": "email",
@@ -189,7 +272,25 @@ class GmailFetch(models.Model):
                     }
                 )
 
-                # Ghi vào thông báo (nếu có dùng)
+                attachments = save_attachments(payload, gmail_id, created_message.id)
+                # Build danh sách attachment trả ra ngoài (API, giao diện...)
+                attachment_list = [
+                    {
+                        "id": att.id,
+                        "name": att.name,
+                        "url": f"/web/content/{att.id}?download=true",
+                        "mimetype": att.mimetype,
+                    }
+                    for att in attachments
+                ]
+
+                # Nếu có CID thì cập nhật lại body sau khi thay src ảnh
+                if attachments and "cid:" in body_html:
+                    updated_body = replace_cid_links(body_html, attachments)
+                    created_message.body = updated_body
+                else:
+                    updated_body = body_html
+
                 self.env["mail.notification"].sudo().create(
                     {
                         "mail_message_id": created_message.id,
@@ -207,13 +308,16 @@ class GmailFetch(models.Model):
                         "receiver": receiver,
                         "cc": cc,
                         "date_received": date_received,
-                        "body": body,
+                        "body": updated_body,
+                        "attachments": attachment_list,
                     }
                 )
 
                 fetched_count += 1
+                _logger.info("📩 Synced Gmail message: %s", subject)
 
             if not next_page_token or fetched_count >= max_messages:
                 break
 
+        _logger.info("✅ Đồng bộ Gmail hoàn tất (%s messages)", fetched_count)
         return processed_messages
