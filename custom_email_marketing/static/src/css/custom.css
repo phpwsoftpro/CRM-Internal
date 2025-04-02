@@ -24,11 +24,11 @@
     min-width: 800px;  
 }
 .o_field_many2one_selection{
-    width: 25% !important;
+    width: 35% !important;
 }
 .link-companies{
     position: absolute;
-    left: 390px;
+    left: 460px;
     bottom: 126px;
 }
 .btn_send_email{
