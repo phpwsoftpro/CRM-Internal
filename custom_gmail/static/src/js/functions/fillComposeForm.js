@@ -1,7 +1,7 @@
 /** @odoo-module **/
 
-export function fillComposeForm(to, subject, body, editorInstance) {
-    document.querySelector(".compose-input.to").value = to;
+export function fillComposeForm(sender, subject, body, editorInstance) {
+    document.querySelector(".compose-input.to").value = sender;
     document.querySelector(".compose-input.subject").value = subject;
 
     // Kiểm tra nếu editorInstance hợp lệ (CKEditor)

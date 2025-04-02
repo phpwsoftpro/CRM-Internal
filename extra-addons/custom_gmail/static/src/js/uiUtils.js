@@ -107,3 +107,9 @@ export function getInitialBgColor(initial) {
     };
     return colors[initial] || '#e8eaed';
 }
+export function onCloseCompose() {
+    this.state.showComposeModal = false;
+    if (this.editorInstance) {
+        this.editorInstance = null;
+    }
+}
