@@ -19,7 +19,10 @@
             <xpath expr="//page[@name='internal_notes']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
-            <xpath expr="//notebook/page[4]" position="attributes">
+            <xpath expr="//page[@name='accounting_disabled']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//page[@name='accounting']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
             <xpath expr="//sheet" position="inside">
