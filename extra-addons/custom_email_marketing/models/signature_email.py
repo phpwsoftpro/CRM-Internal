@@ -29,7 +29,7 @@ class MailComposer(models.TransientModel):
                                 <span>📞</span> <a href="tel:+84393558941" style="color: black; margin-left: 10px; font-size: 15px;">(+84) 393 558 941</a>
                             </div>
                             <div style="margin: 4px 0;">
-                                <span>✉️</span> <a href="mailto:vanessa@wsoftpro.com" style="color: black; margin-left: 10px; font-size: mailto:15px;">vanessa@wsoftpro.com</a>
+                                <span style="color: black">✉️</span> <a href="mailto:vanessa@wsoftpro.com" style="color: black; margin-left: 10px; font-size: 15px;">vanessa@wsoftpro.com</a>
                             </div>
                             <div style="margin: 4px 0;">
                                 <span>🌐</span> <a href="https://wsoftpro.com/" target="_blank" style="color: black; margin-left: 10px; font-size: 15px;">https://wsoftpro.com/</a>
@@ -56,5 +56,3 @@ class MailComposer(models.TransientModel):
         if vals.get("body") and not vals.get("template_id"):
             vals["body"] = self._add_signature_once(vals["body"])
         return super().create(vals)
-
-
