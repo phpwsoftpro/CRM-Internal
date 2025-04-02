@@ -19,7 +19,10 @@
             <xpath expr="//page[@name='internal_notes']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
-            <xpath expr="//notebook/page[4]" position="attributes">
+            <xpath expr="//page[@name='accounting_disabled']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//page[@name='accounting']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
             <xpath expr="//sheet" position="inside">
@@ -70,6 +73,12 @@
                                     'default_email_to': email,
                                     'default_recipient_ids': [(6, 0, [id])]
                                 }"/>
+                            <button
+                                name="action_open_contact_in_new_tab"
+                                type="object"
+                                class="btn-link"
+                                string="Open"
+                                icon="fa-external-link"/>
                         </list>
                         <kanban>
                             <field name="name"/>
@@ -111,15 +120,9 @@
                             <templates>
                                 <t t-name="kanban-box">
                                     <div class="oe_kanban_global_click">
-                                        <strong>
-                                            <field name="name"/>
-                                        </strong>
-                                        <div>
-                                            <field name="email"/>
-                                        </div>
-                                        <div>
-                                            <field name="phone"/>
-                                        </div>
+                                        <strong><field name="name"/></strong>
+                                        <div><field name="email"/></div>
+                                        <div><field name="phone"/></div>
                                     </div>
                                 </t>
                             </templates>
