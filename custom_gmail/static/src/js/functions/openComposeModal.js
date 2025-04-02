@@ -3,16 +3,8 @@ import { fillComposeForm } from "./fillComposeForm";
 export function openComposeModal(mode, msg = null) {
     if (!msg) return;
 
-    // Check if compose modal is already open, if so, close it first
     if (this.state.showComposeModal) {
-        // Destroy existing editor instance if it exists
-        if (this.editorInstance) {
-            this.editorInstance.destroy();
-            this.editorInstance = null;
-        }
-        // Reset state briefly to ensure clean initialization
         this.state.showComposeModal = false;
-        // Small delay to ensure DOM updates
         setTimeout(() => {
             openComposeModalInternal.call(this, mode, msg);
         }, 50);
@@ -35,12 +27,7 @@ function openComposeModalInternal(mode, msg) {
         }
     }
 
-    // Khởi tạo nội dung email dựa trên mode (reply, forward, new)
     setTimeout(() => {
-        if (this.editorInstance) {
-            this.editorInstance.destroy();
-            this.editorInstance = null;
-        }
 
         this.editorInstance = this.initCKEditor();
 
@@ -54,27 +41,19 @@ function openComposeModalInternal(mode, msg) {
         let body = "";
         if (mode === "reply" || mode === "replyAll") {
             body = `
-                <br><br>On ${msg.date_received}, ${msg.email_sender} <${msg.email}> wrote:<br>
-                <blockquote>${msg.gmail_body.replace(/\n/g, "<br>")}</blockquote>
+                <br><br>On ${msg.date_received}, ${msg.sender} wrote:<br>
+                <blockquote>${msg.body.replace(/\n/g, "<br>")}</blockquote>
             `;
         } else if (mode === "forward") {
             body = `
                 <br><br>---------- Forwarded message ---------<br>
-                From: ${msg.email_sender} <${msg.email}><br>
+                From: ${msg.sender} <${msg.email}><br>
                 Date: ${msg.date_received}<br>
                 Subject: ${msg.subject}<br><br>
-                ${msg.gmail_body.replace(/\n/g, "<br>")}
+                ${msg.body.replace(/\n/g, "<br>")}
             `;
         }
 
-        // Gọi hàm điền nội dung email vào compose modal
-        fillComposeForm(msg.email, subject, body, this.editorInstance);
+        fillComposeForm(msg.sender, subject, body, this.editorInstance);
     }, 100);
-}
-
-export function getThreadMessageById(state, messageId, threadId) {
-    if (state.threads && state.threads[threadId]) {
-        return state.threads[threadId].find(msg => msg.id === messageId) || null;
-    }
-    return null;
 }

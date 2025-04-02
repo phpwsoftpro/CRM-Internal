@@ -7,7 +7,7 @@ _logger = logging.getLogger(__name__)
 
 
 class ProjectTask(models.Model):
-    _inherit = ['project.task', 'mail.thread']
+    _inherit = "project.task"
 
     remaining_days = fields.Char(
         string="Remaining Time", compute="_compute_remaining_days"
@@ -25,13 +25,7 @@ class ProjectTask(models.Model):
         string="Connected Tasks",
     )
     cover_image = fields.Binary("Cover Image")
-    user_ids = fields.Many2many(
-        'res.users',
-        'custom_project_task_user_rel',  # 👈 đổi tên bảng phụ
-        'task_id',
-        'user_id',
-        string='Assigned Users'
-    )
+
     @api.model
     def create(self, vals):
         record = super(ProjectTask, self).create(vals)
