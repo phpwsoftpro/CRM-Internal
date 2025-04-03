@@ -81,9 +81,33 @@ class ProjectTask(models.Model):
     def create(self, vals):
         task = super().create(vals)
 
-        all_users = self.env["res.users"].sudo().search([])  # 👈 lấy tất cả user
+        all_users = self.env["res.users"].sudo().search([("share", "=", False)])
+
+        # ✅ Gửi 1 thông báo duy nhất
+        message = (
+            task.env["mail.message"]
+            .sudo()
+            .create(
+                {
+                    "model": "project.task",
+                    "res_id": task.id,
+                    "message_type": "notification",  # ✅ KHÔNG PHẢI 'comment'
+                    "subject": f"New Task Created: {task.name}",
+                    "body": f"<p>A new task <b>{task.name}</b> has been created in project <b>{task.project_id.name}</b>.</p>",
+                    "author_id": task.env.user.partner_id.id,
+                }
+            )
+        )
+
         for user in all_users:
-            task._send_create_notification(user)
+            task.env["mail.notification"].sudo().create(
+                {
+                    "mail_message_id": message.id,
+                    "res_partner_id": user.partner_id.id,
+                    "notification_type": "inbox",
+                    "is_read": False,
+                }
+            )
 
         return task
 
