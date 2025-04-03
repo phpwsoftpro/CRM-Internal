@@ -1,61 +1,106 @@
-# from odoo import models, fields
-# import logging
+import logging
+from odoo import models, fields, api, _
 
-# _logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
-# class ProjectTask(models.Model):
-#     _inherit = "project.task"
+class ProjectTask(models.Model):
+    _inherit = "project.task"
 
-#     def write(self, vals):
-#         _logger.info(f"[TASK WRITE] Called with vals: {vals} for task(s): {self.ids}")
-#         stage_before = {rec.id: rec.stage_id.name for rec in self}
-#         result = super().write(vals)
+    def _send_stage_change_notification(self, from_stage, to_stage, user):
+        message = (
+            self.env["mail.message"]
+            .sudo()
+            .create(
+                {
+                    "model": "project.task",
+                    "res_id": self.id,
+                    "message_type": "notification",
+                    "subtype_id": self.env.ref(
+                        "mail.mt_comment"
+                    ).id,  # 💡 rất quan trọng
+                    "subject": f"Task moved: {self.name}",
+                    "body": f"<p><b>{self.name}</b> was moved from <b>{from_stage}</b> to <b>{to_stage}</b></p>",
+                    "author_id": self.env.user.partner_id.id,
+                }
+            )
+        )
 
-#         for rec in self:
-#             if "stage_id" in vals:
-#                 old_stage = stage_before.get(rec.id)
-#                 new_stage = self.env["project.task.type"].browse(vals["stage_id"]).name
-#                 user = self.env.user
+        self.env["mail.notification"].sudo().create(
+            {
+                "mail_message_id": message.id,
+                "res_partner_id": user.partner_id.id,
+                "notification_type": "inbox",
+                "is_read": False,
+            }
+        )
 
-#                 body = (
-#                     f"<b>📌 {rec.name}</b> was moved by <b>{user.name}</b><br>"
-#                     f"Stage: <i>{old_stage}</i> → <i>{new_stage}</i>"
-#                 )
+    def _send_create_notification(self, user):
+        message = (
+            self.env["mail.message"]
+            .sudo()
+            .create(
+                {
+                    "model": "project.task",
+                    "res_id": self.id,
+                    "message_type": "notification",
+                    "subtype_id": self.env.ref("mail.mt_comment").id,  # 💡
+                    "subject": f"New Task Created: {self.name}",
+                    "body": f"<p>A new task <b>{self.name}</b> has been created in project <b>{self.project_id.name}</b>.</p>",
+                    "author_id": self.env.user.partner_id.id,
+                }
+            )
+        )
 
-#                 try:
-#                     # Tìm hoặc tạo channel công khai 'All Users'
-#                     channel = self.env["mail.channel"].search(
-#                         [("name", "=", "All Users")], limit=1
-#                     )
-#                     if not channel:
-#                         partners = (
-#                             self.env["res.users"]
-#                             .search([("active", "=", True)])
-#                             .mapped("partner_id")
-#                         )
-#                         channel = self.env["mail.channel"].create(
-#                             {
-#                                 "name": "All Users",
-#                                 "channel_type": "channel",
-#                                 "public": "public",
-#                                 "channel_partner_ids": [(6, 0, partners.ids)],
-#                             }
-#                         )
-#                         _logger.info(
-#                             f"[CHANNEL CREATED] 'All Users' with {len(partners)} partners"
-#                         )
+        self.env["mail.notification"].sudo().create(
+            {
+                "mail_message_id": message.id,
+                "res_partner_id": user.partner_id.id,
+                "notification_type": "inbox",
+                "is_read": False,
+            }
+        )
 
-#                     # Gửi tin nhắn vào channel
-#                     channel.message_post(
-#                         body=body,
-#                         author_id=user.partner_id.id,
-#                         message_type="comment",
-#                         subtype_xmlid="mail.mt_comment",
-#                     )
-#                     _logger.info(f"[DISCUSS POPUP] Message sent to channel: All Users")
+    def message_post(self, **kwargs):
+        res = super().message_post(**kwargs)
 
-#                 except Exception as e:
-#                     _logger.error(f"[ERROR] Could not post to Discuss: {str(e)}")
+        # Chỉ gửi thông báo nếu là comment hoặc log (không gửi khi system log tự động)
+        if kwargs.get("message_type") == "comment":
+            all_users = self.env["res.users"].sudo().search([("share", "=", False)])
+            for user in all_users:
+                self.env["mail.notification"].sudo().create(
+                    {
+                        "mail_message_id": res.id,
+                        "res_partner_id": user.partner_id.id,
+                        "notification_type": "inbox",
+                        "is_read": False,
+                    }
+                )
 
-#         return result
+        return res
+
+    @api.model
+    def create(self, vals):
+        task = super().create(vals)
+
+        all_users = self.env["res.users"].sudo().search([])  # 👈 lấy tất cả user
+        for user in all_users:
+            task._send_create_notification(user)
+
+        return task
+
+    def write(self, vals):
+        stage_before_map = {rec.id: rec.stage_id.name for rec in self}
+
+        result = super().write(vals)
+
+        if "stage_id" in vals:
+            all_users = self.env["res.users"].sudo().search([])  # 👈 lấy tất cả user
+
+            for rec in self:
+                from_stage = stage_before_map.get(rec.id)
+                to_stage = rec.stage_id.name
+                if from_stage != to_stage:
+                    for user in all_users:
+                        rec._send_stage_change_notification(from_stage, to_stage, user)
+        return result
