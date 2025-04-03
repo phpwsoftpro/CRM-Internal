@@ -149,9 +149,7 @@ export default xml`
                         <t t-foreach="state.messages" t-as="msg" t-key="msg.id">
                             <div class="email-item"
                                 t-att-class="msg.unread ? 'email-row unread' : 'email-row'"
-                                t-on-click="() => this.onMessageClick(msg)"
-                                t-on-mouseenter="() => this.showIcons(msg)"
-                                t-on-mouseleave="() => this.hideIcons(msg)">
+                                t-on-click="() => this.onMessageClick(msg)">
 
                                 <!-- Checkbox -->
                                 <div class="email-checkbox">
@@ -193,8 +191,7 @@ export default xml`
                             <div class="thread-container">
                                 <t t-foreach="state.currentThread" t-as="threadMsg" t-key="threadMsg.id">
                                     <div class="thread-message" 
-                                        t-att-class="{'current-message': threadMsg.id === state.selectedMessage.id, 'collapsed': threadMsg.collapsed}"
-                                        t-on-click="() => this.toggleThreadMessage(threadMsg)">
+                                        t-att-class="{'current-message': threadMsg.id === state.selectedMessage.id, 'collapsed': threadMsg.collapsed}">
                                         <div class="message-header">
                                             <div class="sender-info">
                                                 <img class="sender-avatar" t-att-src="threadMsg.avatar || '/path/to/default-avatar.png'" alt="avatar" />
@@ -243,33 +240,58 @@ export default xml`
 
                                                     <!-- 📄 Preview PDF -->
                                                     <t t-elif="attachment.mimetype === 'application/pdf'">
-                                                        <a t-att-href="attachment.url" target="_blank">
+                                                        <div class="attachment-box" t-on-click="(ev) => this.openFilePreview(ev)" t-att-data-url="attachment.url">
                                                             <iframe t-att-src="attachment.url" style="width: 100%; height: 150px; border: none;"></iframe>
-                                                        </a>
-                                                        <div class="attachment-name"><t t-esc="attachment.name"/></div>
-                                                    </t>
-
-                                                    <!-- 📎 Các file khác -->
-                                                    <t t-else="">
-                                                        <div class="attachment-icon">
-                                                            <i t-att-class="'fa ' + (
-                                                                attachment.mimetype.includes('word') ? 'fa-file-word-o' :
-                                                                attachment.mimetype.includes('excel') ? 'fa-file-excel-o' :
-                                                                attachment.mimetype.includes('powerpoint') ? 'fa-file-powerpoint-o' :
-                                                                attachment.mimetype.includes('zip') ? 'fa-file-archive-o' :
-                                                                'fa-file-o')"></i>
-                                                        </div>
-                                                        <div class="attachment-name">
-                                                            <a t-att-href="attachment.download_url" target="_blank">
-                                                                <t t-esc="attachment.name"/>
+                                                            <div class="attachment-name"><t t-esc="attachment.name"/></div>
+                                                            <!-- Nút tải xuống -->
+                                                            <a t-att-href="'/web/content/' + attachment.id + '?download=true'"
+                                                            t-att-download="attachment.name"
+                                                            t-on-click="(ev) => { ev.stopPropagation(); }"
+                                                            class="attachment-download"
+                                                            title="Tải xuống">
+                                                                <i class="fa fa-download"></i>
                                                             </a>
                                                         </div>
                                                     </t>
+                                                    <!-- 📎 Các file khác -->
+                                                   <t t-else="">
+                                                        <div class="attachment-box">
+                                                            <!-- Icon động theo loại file -->
+                                                            <div class="attachment-icon">
+                                                                <i t-att-class="'fa ' + (
+                                                                    attachment.mimetype.includes('word') ? 'fa-file-word-o' :
+                                                                    attachment.mimetype.includes('excel') || attachment.name.endsWith('.csv') || attachment.name.endsWith('.xlsx') || attachment.name.endsWith('.xls') ? 'fa-file-excel-o' :
+                                                                    attachment.mimetype.includes('powerpoint') ? 'fa-file-powerpoint-o' :
+                                                                    attachment.mimetype.includes('zip') || attachment.name.endsWith('.zip') ? 'fa-file-archive-o' :
+                                                                    'fa-file-o')"></i>
+                                                            </div>
 
+                                                            <!-- Tên file -->
+                                                            <div class="attachment-name">
+                                                                <span t-esc="attachment.name" />
+                                                            </div>
+
+                                                            <!-- Nút tải xuống -->
+                                                            <div class="attachment-actions">
+                                                                <a t-att-href="'/web/content/' + attachment.id + '?download=true'"
+                                                                    t-att-download="attachment.name"
+                                                                    t-on-click="(ev) => { ev.stopPropagation(); }"
+                                                                    class="attachment-download"
+                                                                    title="Tải xuống">
+                                                                        <i class="fa fa-download"></i>
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </t>
+                                                </div>
+                                            </div>
+                                           <div id="filePreviewModal" class="modal">
+                                                <div class="modal-content">
+                                                   <span class="close" t-attf-onclick="this.parentElement.parentElement.style.display='none'">×</span>
+                                                    <iframe id="filePreviewFrame" style="width:100%; height:80vh; border:none;"></iframe>
                                                 </div>
                                             </div>
                                         </div>
-
                                     </div>
                                 </t>
                             </div>
