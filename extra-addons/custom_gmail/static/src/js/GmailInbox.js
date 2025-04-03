@@ -8,7 +8,7 @@ import { openComposeModal } from "./functions/openComposeModal";
 import { initialState } from "./state";
 import { loadStarredState, saveStarredState } from "./storageUtils";
 import template from "./template";
-import { getInitialBgColor, getInitialColor, getStatusText, hideIcons, nextPage, onMoreActions, onRefresh, prevPage, showIcons, toggleAccounts, toggleDropdown, toggleDropdownAccount, toggleDropdownVertical, toggleSelect, toggleSelectAll, toggleThreadMessage, onCloseCompose } from "./uiUtils";
+import { getInitialBgColor, getInitialColor, getStatusText, onRefresh,toggleAccounts, toggleDropdown, toggleDropdownAccount, toggleDropdownVertical, toggleSelect, toggleSelectAll, toggleThreadMessage, onCloseCompose, openFilePreview } from "./uiUtils";
 import { onSendEmail } from "./functions/index";
 export class GmailInbox extends Component {
     setup() {
@@ -23,14 +23,9 @@ export class GmailInbox extends Component {
         this.toggleAccounts = toggleAccounts.bind(this);
         this.toggleDropdownAccount = toggleDropdownAccount.bind(this);
         this.toggleSelectAll = toggleSelectAll.bind(this);
-        this.prevPage = prevPage.bind(this);
-        this.nextPage = nextPage.bind(this);
         this.onRefresh = onRefresh.bind(this);
-        this.onMoreActions = onMoreActions.bind(this);
         this.saveStarredState = saveStarredState.bind(this);
         this.loadStarredState = loadStarredState.bind(this);
-        this.showIcons = showIcons.bind(this);
-        this.hideIcons = hideIcons.bind(this);
         this.initCKEditor = initCKEditor.bind(this);
         this.loadCKEditor = loadCKEditor.bind(this);
         this.getInitialColor = getInitialColor.bind(this); 
@@ -41,6 +36,7 @@ export class GmailInbox extends Component {
         this.toggleThreadMessage = toggleThreadMessage.bind(this);
         this.onCloseCompose = onCloseCompose.bind(this);
         this.onSendEmail = onSendEmail.bind(this);
+        this.openFilePreview = openFilePreview;
         onMounted(() => {
             this.loadMessages();
             this.state.selectedAccount = this.state.accounts[0];
@@ -110,11 +106,6 @@ export class GmailInbox extends Component {
             window.editorInstance.destroy();
             window.editorInstance = null;
         }
-    }
-
-    onNewEmail(ev) {
-        ev.stopPropagation();
-        this.openComposeModal("new");
     }
 }
 
