@@ -877,13 +877,8 @@
     align-items: center;
     width: 100px;
     padding: 12px;
-    background-color: #f1f3f4;
     border-radius: 4px;
     cursor: pointer;
-}
-
-.attachment-item:hover {
-    background-color: #e8eaed;
 }
 
 .attachment-icon {

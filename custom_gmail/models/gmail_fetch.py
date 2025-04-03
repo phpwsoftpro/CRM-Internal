@@ -1,16 +1,15 @@
 import requests
 import logging
-from odoo import models, api
+from odoo import models, api, fields
 import base64
 from lxml import html
 import mimetypes
-
+from datetime import datetime, timedelta
 _logger = logging.getLogger(__name__)
 
 
 class GmailFetch(models.Model):
     _inherit = "mail.message"
-
     @api.model
     def action_redirect_gmail_auth(self):
         """
@@ -84,9 +83,9 @@ class GmailFetch(models.Model):
         max_messages = 15
         fetched_count = 0
         next_page_token = None
-
+        thirty_days_ago = fields.Datetime.to_string(datetime.now() - timedelta(days=30))
         existing_gmail_ids = set(
-            self.search([], order="create_date desc", limit=15).mapped("gmail_id")
+            self.search([("create_date", ">=", thirty_days_ago)]).mapped("gmail_id")
         )
 
         def extract_all_html_parts(payload):
