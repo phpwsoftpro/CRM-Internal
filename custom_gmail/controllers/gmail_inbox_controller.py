@@ -1,7 +1,7 @@
 from odoo import http
 from odoo.http import request
 from bs4 import BeautifulSoup
-import uuid
+import re
 import base64
 import logging
 import json
@@ -101,6 +101,11 @@ class UploadController(http.Controller):
 _logger = logging.getLogger(__name__)
 
 
+def extract_email_only(email_str):
+    match = re.search(r"<(.+?)>", email_str)
+    return match.group(1) if match else email_str
+
+
 def send_email_with_gmail_api(
     access_token, sender_email, to_email, subject, html_content
 ):
@@ -144,9 +149,6 @@ def send_email_with_gmail_api(
         }
 
 
-_logger = logging.getLogger(__name__)
-
-
 class MailAPIController(http.Controller):
 
     @http.route(
@@ -168,7 +170,8 @@ class MailAPIController(http.Controller):
                 {"status": "error", "message": "Invalid JSON"}, status=400
             )
 
-        to = data.get("to")
+        # Trích email thuần từ trường "to"
+        to = extract_email_only(data.get("to", ""))
         subject = data.get("subject")
         body_html = data.get("body_html")
 
