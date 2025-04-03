@@ -7,7 +7,7 @@ _logger = logging.getLogger(__name__)
 class ProjectTask(models.Model):
     _inherit = "project.task"
 
-    def _send_stage_change_notification(self, from_stage, to_stage, user):
+    def _send_stage_change_notification(self, from_stage, to_stage):
         message = (
             self.env["mail.message"]
             .sudo()
@@ -16,9 +16,6 @@ class ProjectTask(models.Model):
                     "model": "project.task",
                     "res_id": self.id,
                     "message_type": "notification",
-                    "subtype_id": self.env.ref(
-                        "mail.mt_comment"
-                    ).id,  # 💡 rất quan trọng
                     "subject": f"Task moved: {self.name}",
                     "body": f"<p><b>{self.name}</b> was moved from <b>{from_stage}</b> to <b>{to_stage}</b></p>",
                     "author_id": self.env.user.partner_id.id,
@@ -26,14 +23,16 @@ class ProjectTask(models.Model):
             )
         )
 
-        self.env["mail.notification"].sudo().create(
-            {
-                "mail_message_id": message.id,
-                "res_partner_id": user.partner_id.id,
-                "notification_type": "inbox",
-                "is_read": False,
-            }
-        )
+        all_users = self.env["res.users"].sudo().search([("share", "=", False)])
+        for user in all_users:
+            self.env["mail.notification"].sudo().create(
+                {
+                    "mail_message_id": message.id,
+                    "res_partner_id": user.partner_id.id,
+                    "notification_type": "inbox",
+                    "is_read": False,
+                }
+            )
 
     def _send_create_notification(self, user):
         message = (
@@ -44,7 +43,6 @@ class ProjectTask(models.Model):
                     "model": "project.task",
                     "res_id": self.id,
                     "message_type": "notification",
-                    "subtype_id": self.env.ref("mail.mt_comment").id,  # 💡
                     "subject": f"New Task Created: {self.name}",
                     "body": f"<p>A new task <b>{self.name}</b> has been created in project <b>{self.project_id.name}</b>.</p>",
                     "author_id": self.env.user.partner_id.id,
@@ -95,12 +93,10 @@ class ProjectTask(models.Model):
         result = super().write(vals)
 
         if "stage_id" in vals:
-            all_users = self.env["res.users"].sudo().search([])  # 👈 lấy tất cả user
-
             for rec in self:
                 from_stage = stage_before_map.get(rec.id)
                 to_stage = rec.stage_id.name
                 if from_stage != to_stage:
-                    for user in all_users:
-                        rec._send_stage_change_notification(from_stage, to_stage, user)
+                    rec._send_stage_change_notification(from_stage, to_stage)
+
         return result

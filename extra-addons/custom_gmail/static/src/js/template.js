@@ -227,17 +227,49 @@ export default xml`
                                             <t t-raw="threadMsg.body"/>
                                         </div>
                                         
-                                        <div class="email-attachments" t-if="threadMsg.attachments &amp;&amp; threadMsg.attachments.length">
+                                        <div class="email-attachments" t-if="threadMsg.attachments and threadMsg.attachments.length">
                                             <h3 class="attachments-title">Tệp đính kèm</h3>
                                             <div class="attachments-grid">
                                                 <div t-foreach="threadMsg.attachments" t-as="attachment" t-key="attachment.id || attachment_index" class="attachment-item">
-                                                    <div class="attachment-icon">
-                                                        <i t-att-class="'fa ' + (attachment.type === 'pdf' ? 'fa-file-pdf-o' : 'fa-file-o')"></i>
-                                                    </div>
-                                                    <div class="attachment-name"><t t-esc="attachment.name"/></div>
+
+                                                    <!-- 🖼️ Preview ảnh -->
+                                                    <t t-if="attachment.mimetype and attachment.mimetype.startsWith('image/')">
+                                                        <a t-att-href="attachment.url" target="_blank">
+                                                            <img t-att-src="attachment.url"
+                                                                style="max-width: 150px; max-height: 150px; border-radius: 6px; border: 1px solid #ccc;" />
+                                                        </a>
+                                                        <div class="attachment-name"><t t-esc="attachment.name"/></div>
+                                                    </t>
+
+                                                    <!-- 📄 Preview PDF -->
+                                                    <t t-elif="attachment.mimetype === 'application/pdf'">
+                                                        <a t-att-href="attachment.url" target="_blank">
+                                                            <iframe t-att-src="attachment.url" style="width: 100%; height: 150px; border: none;"></iframe>
+                                                        </a>
+                                                        <div class="attachment-name"><t t-esc="attachment.name"/></div>
+                                                    </t>
+
+                                                    <!-- 📎 Các file khác -->
+                                                    <t t-else="">
+                                                        <div class="attachment-icon">
+                                                            <i t-att-class="'fa ' + (
+                                                                attachment.mimetype.includes('word') ? 'fa-file-word-o' :
+                                                                attachment.mimetype.includes('excel') ? 'fa-file-excel-o' :
+                                                                attachment.mimetype.includes('powerpoint') ? 'fa-file-powerpoint-o' :
+                                                                attachment.mimetype.includes('zip') ? 'fa-file-archive-o' :
+                                                                'fa-file-o')"></i>
+                                                        </div>
+                                                        <div class="attachment-name">
+                                                            <a t-att-href="attachment.download_url" target="_blank">
+                                                                <t t-esc="attachment.name"/>
+                                                            </a>
+                                                        </div>
+                                                    </t>
+
                                                 </div>
                                             </div>
                                         </div>
+
                                     </div>
                                 </t>
                             </div>
