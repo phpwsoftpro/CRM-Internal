@@ -1,11 +1,18 @@
 import logging
-from odoo import models, fields, api, _
+from odoo import models, api
 
 _logger = logging.getLogger(__name__)
 
 
 class ProjectTask(models.Model):
     _inherit = "project.task"
+
+    def _track_subtype(self, init_values):
+        self.ensure_one()
+        if "stage_id" in init_values:
+            # Ngăn không cho tạo dòng Stage changed mặc định
+            return False
+        return super()._track_subtype(init_values)
 
     def _send_stage_change_notification(self, from_stage, to_stage):
         message = (
@@ -23,18 +30,30 @@ class ProjectTask(models.Model):
             )
         )
 
-        all_users = self.env["res.users"].sudo().search([("share", "=", False)])
-        for user in all_users:
-            self.env["mail.notification"].sudo().create(
-                {
-                    "mail_message_id": message.id,
-                    "res_partner_id": user.partner_id.id,
-                    "notification_type": "inbox",
-                    "is_read": False,
-                }
+        for user in self.user_ids:
+            existing = (
+                self.env["mail.notification"]
+                .sudo()
+                .search(
+                    [
+                        ("mail_message_id", "=", message.id),
+                        ("res_partner_id", "=", user.partner_id.id),
+                    ],
+                    limit=1,
+                )
             )
 
-    def _send_create_notification(self, user):
+            if not existing:
+                self.env["mail.notification"].sudo().create(
+                    {
+                        "mail_message_id": message.id,
+                        "res_partner_id": user.partner_id.id,
+                        "notification_type": "inbox",
+                        "is_read": False,
+                    }
+                )
+
+    def _send_create_notification(self):
         message = (
             self.env["mail.message"]
             .sudo()
@@ -50,70 +69,92 @@ class ProjectTask(models.Model):
             )
         )
 
-        self.env["mail.notification"].sudo().create(
-            {
-                "mail_message_id": message.id,
-                "res_partner_id": user.partner_id.id,
-                "notification_type": "inbox",
-                "is_read": False,
-            }
-        )
+        for user in self.user_ids:
+            existing = (
+                self.env["mail.notification"]
+                .sudo()
+                .search(
+                    [
+                        ("mail_message_id", "=", message.id),
+                        ("res_partner_id", "=", user.partner_id.id),
+                    ],
+                    limit=1,
+                )
+            )
 
-    def message_post(self, **kwargs):
-        res = super().message_post(**kwargs)
-
-        # Chỉ gửi thông báo nếu là comment hoặc log (không gửi khi system log tự động)
-        if kwargs.get("message_type") == "comment":
-            all_users = self.env["res.users"].sudo().search([("share", "=", False)])
-            for user in all_users:
+            if not existing:
                 self.env["mail.notification"].sudo().create(
                     {
-                        "mail_message_id": res.id,
+                        "mail_message_id": message.id,
                         "res_partner_id": user.partner_id.id,
                         "notification_type": "inbox",
                         "is_read": False,
                     }
                 )
 
+    def message_post(self, **kwargs):
+        res = super().message_post(**kwargs)
+
+        if kwargs.get("message_type") == "comment":
+            partner_ids = kwargs.get("partner_ids", [])
+            notified_partner_ids = set(partner_ids)
+
+            # Thêm người được assign
+            for user in self.user_ids:
+                notified_partner_ids.add(user.partner_id.id)
+
+            # Lấy nội dung comment thực tế
+            comment_body = kwargs.get("body") or res.body
+
+            for partner_id in notified_partner_ids:
+                message = (
+                    self.env["mail.message"]
+                    .sudo()
+                    .create(
+                        {
+                            "model": "project.task",
+                            "res_id": self.id,
+                            "message_type": "notification",
+                            "subject": f"Comment on: {self.name}",
+                            "body": f"<p>{comment_body}</p>",
+                            "author_id": self.env.user.partner_id.id,
+                        }
+                    )
+                )
+
+                # Tránh tạo trùng
+                existing = (
+                    self.env["mail.notification"]
+                    .sudo()
+                    .search(
+                        [
+                            ("mail_message_id", "=", message.id),
+                            ("res_partner_id", "=", partner_id),
+                        ],
+                        limit=1,
+                    )
+                )
+
+                if not existing:
+                    self.env["mail.notification"].sudo().create(
+                        {
+                            "mail_message_id": message.id,
+                            "res_partner_id": partner_id,
+                            "notification_type": "inbox",
+                            "is_read": False,
+                        }
+                    )
+
         return res
 
     @api.model
     def create(self, vals):
         task = super().create(vals)
-
-        all_users = self.env["res.users"].sudo().search([("share", "=", False)])
-
-        # ✅ Gửi 1 thông báo duy nhất
-        message = (
-            task.env["mail.message"]
-            .sudo()
-            .create(
-                {
-                    "model": "project.task",
-                    "res_id": task.id,
-                    "message_type": "notification",  # ✅ KHÔNG PHẢI 'comment'
-                    "subject": f"New Task Created: {task.name}",
-                    "body": f"<p>A new task <b>{task.name}</b> has been created in project <b>{task.project_id.name}</b>.</p>",
-                    "author_id": task.env.user.partner_id.id,
-                }
-            )
-        )
-
-        for user in all_users:
-            task.env["mail.notification"].sudo().create(
-                {
-                    "mail_message_id": message.id,
-                    "res_partner_id": user.partner_id.id,
-                    "notification_type": "inbox",
-                    "is_read": False,
-                }
-            )
-
+        task._send_create_notification()
         return task
 
     def write(self, vals):
         stage_before_map = {rec.id: rec.stage_id.name for rec in self}
-
         result = super().write(vals)
 
         if "stage_id" in vals:
