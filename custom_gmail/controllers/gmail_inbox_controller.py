@@ -107,7 +107,7 @@ def extract_email_only(email_str):
 
 
 def send_email_with_gmail_api(
-    access_token, sender_email, to_email, subject, html_content
+    access_token, sender_email, to_email, subject, html_content, thread_id=None
 ):
     message = MIMEMultipart("alternative")
     message["Subject"] = str(Header(subject, "utf-8"))
@@ -124,7 +124,10 @@ def send_email_with_gmail_api(
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",
     }
+
     body = {"raw": raw_message}
+    if thread_id:
+        body["threadId"] = thread_id  # ✅ Giữ chuỗi hội thoại
 
     response = requests.post(url, headers=headers, json=body)
 
@@ -149,13 +152,13 @@ def send_email_with_gmail_api(
         }
 
 
+
 class MailAPIController(http.Controller):
 
     @http.route(
         "/api/send_email", type="http", auth="user", csrf=False, methods=["POST"]
     )
     def send_email(self, **kwargs):
-        # Log headers và raw body để kiểm tra từ frontend
         headers = dict(request.httprequest.headers)
         raw_data = request.httprequest.get_data(as_text=True)
         _logger.info("Headers: %s", headers)
@@ -170,10 +173,10 @@ class MailAPIController(http.Controller):
                 {"status": "error", "message": "Invalid JSON"}, status=400
             )
 
-        # Trích email thuần từ trường "to"
         to = extract_email_only(data.get("to", ""))
         subject = data.get("subject")
         body_html = data.get("body_html")
+        thread_id = data.get("thread_id")  # ✅ lấy thread_id nếu có
 
         if not to or not subject or not body_html:
             _logger.warning(
@@ -201,9 +204,9 @@ class MailAPIController(http.Controller):
                 {"status": "error", "message": "No Gmail token available"}, status=400
             )
 
-        # Gửi email qua Gmail API
+        # ✅ Truyền thread_id nếu có
         result = send_email_with_gmail_api(
-            access_token, sender_email, to, subject, body_html
+            access_token, sender_email, to, subject, body_html, thread_id
         )
 
         _logger.info("📤 Gmail API response: %s", result)
