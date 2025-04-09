@@ -106,28 +106,15 @@
                     </field>
                 </page>
                 <page string="Companies" name="companies" invisible="is_company">
-                    <field name="parent_id" mode="list,kanban" context="{'default_is_company': False}" domain="[('is_company', '=', True)]">
-                        <list>
-                            <field name="name" string="Company Name"/>
-                            <field name="email" string="Email"/>
-                            <field name="phone" string="Phone"/>
-                            <field name="mobile" string="Mobile"/>
-                        </list>
-                        <kanban>
-                            <field name="name"/>
-                            <field name="email"/>
-                            <field name="phone"/>
-                            <templates>
-                                <t t-name="kanban-box">
-                                    <div class="oe_kanban_global_click">
-                                        <strong><field name="name"/></strong>
-                                        <div><field name="email"/></div>
-                                        <div><field name="phone"/></div>
-                                    </div>
-                                </t>
-                            </templates>
-                        </kanban>
-                    </field>
+                    <group>
+                        <field name="parent_id"></field>
+                        <button name="action_open_company_in_new_tab"
+                                string="Open"
+                                type="object"
+                                icon="fa-external-link"
+                                class="btn-link link-companies"
+                                />
+                    </group>
                 </page>
                 <page string="Mail History">
                     <field name="message_ids" widget="mail_thread" options="{'res_model': 'res.partner'}"/>
