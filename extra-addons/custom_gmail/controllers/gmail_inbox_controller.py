@@ -74,6 +74,8 @@ class GmailInboxController(http.Controller):
                     ),
                     "body": full_body,  # Dùng body HTML gốc
                     "attachments": attachment_list,
+                    "thread_id": msg.thread_id or "",
+                    "message_id": msg.message_id or "",
                 }
             )
 
@@ -107,12 +109,17 @@ def extract_email_only(email_str):
 
 
 def send_email_with_gmail_api(
-    access_token, sender_email, to_email, subject, html_content, thread_id=None
+    access_token, sender_email, to_email, subject, html_content, thread_id=None, parent_gmail_id=None
 ):
     message = MIMEMultipart("alternative")
     message["Subject"] = str(Header(subject, "utf-8"))
     message["From"] = sender_email
     message["To"] = to_email
+
+    if parent_gmail_id:
+        parent_ref = f"<{parent_gmail_id}>"
+        message["In-Reply-To"] = parent_ref
+        message["References"] = parent_ref
 
     html_part = MIMEText(html_content, "html")
     message.attach(html_part)
@@ -127,7 +134,7 @@ def send_email_with_gmail_api(
 
     body = {"raw": raw_message}
     if thread_id:
-        body["threadId"] = thread_id  # ✅ Giữ chuỗi hội thoại
+        body["threadId"] = thread_id
 
     response = requests.post(url, headers=headers, json=body)
 
@@ -177,7 +184,7 @@ class MailAPIController(http.Controller):
         subject = data.get("subject")
         body_html = data.get("body_html")
         thread_id = data.get("thread_id")  # ✅ lấy thread_id nếu có
-
+        parent_gmail_id = data.get("parent_gmail_id")
         if not to or not subject or not body_html:
             _logger.warning(
                 "Missing fields: to=%s, subject=%s, body_html=%s",
@@ -206,7 +213,7 @@ class MailAPIController(http.Controller):
 
         # ✅ Truyền thread_id nếu có
         result = send_email_with_gmail_api(
-            access_token, sender_email, to, subject, body_html, thread_id
+            access_token, sender_email, to, subject, body_html, thread_id, data.get("parent_gmail_id")
         )
 
         _logger.info("📤 Gmail API response: %s", result)

@@ -54,23 +54,32 @@ export class GmailInbox extends Component {
         }
     }
     onMessageClick(msg) {
-        // Set the selected message
+        if (!msg) {
+            console.warn("No message provided to onMessageClick");
+            return;
+        }
+    
+        // Set selected message
         this.state.selectedMessage = msg;
-        
-        // If message has a thread_id, load the thread
-        if (msg.thread_id && this.state.threads[msg.thread_id]) {
-            this.state.currentThread = this.state.threads[msg.thread_id];
+    
+        // Load thread if available
+        const threadId = msg.thread_id;
+        const thread = threadId ? this.state.threads?.[threadId] : null;
+    
+        if (Array.isArray(thread) && thread.length > 0) {
+            this.state.currentThread = thread;
         } else {
-            // If no thread, just show the single message
+            // Fallback: single message only
             this.state.currentThread = [msg];
         }
-        
-        // Mark message as read
+    
+        // Mark as read if unread
         if (msg.unread) {
             msg.unread = false;
             this.updateMessage(msg);
         }
     }
+    
     updateMessage(msg) {
         // Find message in main messages list and update it
         const index = this.state.messages.findIndex(m => m.id === msg.id);

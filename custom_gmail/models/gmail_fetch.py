@@ -1,3 +1,4 @@
+import json
 import requests
 import logging
 from odoo import models, api, fields
@@ -227,6 +228,7 @@ class GmailFetch(models.Model):
                     break
 
                 gmail_id = msg.get("id")
+                thread_id = msg.get("threadId")
                 if gmail_id in existing_gmail_ids:
                     _logger.debug("⏭️ Bỏ qua vì đã tồn tại: %s", gmail_id)
                     continue
@@ -240,7 +242,6 @@ class GmailFetch(models.Model):
                 msg_data = message_response.json()
                 payload = msg_data.get("payload", {})
                 headers_list = payload.get("headers", [])
-
                 def get_header(name):
                     return next(
                         (h.get("value") for h in headers_list if h.get("name") == name),
@@ -253,7 +254,7 @@ class GmailFetch(models.Model):
                 cc = get_header("Cc")
                 raw_date = get_header("Date")
                 date_received = self.parse_date(raw_date) if raw_date else None
-
+                message_id = get_header("Message-Id").strip("<>")
                 body_html = extract_all_html_parts(payload)
 
                 created_message = self.create(
@@ -268,6 +269,8 @@ class GmailFetch(models.Model):
                         "email_sender": sender,
                         "email_receiver": receiver,
                         "email_cc": cc,
+                        "thread_id": thread_id,
+                        "message_id": message_id,
                     }
                 )
 
@@ -309,6 +312,8 @@ class GmailFetch(models.Model):
                         "date_received": date_received,
                         "body": updated_body,
                         "attachments": attachment_list,
+                        "message_id": message_id,
+                        "thread_id": thread_id,
                     }
                 )
 

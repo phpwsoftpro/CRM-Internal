@@ -1,13 +1,20 @@
-/** @odoo-module **/
-import { getThreadMessageById } from "./openComposeModal";
 export function onReply(ev, selectedMessage) {
     ev.stopPropagation();
-    
-    // Nếu có thread_id, lấy đúng email đang được reply
-    let actualMessage = selectedMessage;
-    if (selectedMessage.thread_id) {
-        actualMessage = getThreadMessageById(this.state, selectedMessage.id, selectedMessage.thread_id);
-    }
 
-    this.openComposeModal("reply", actualMessage);
+    const message = selectedMessage.thread_id
+        ? selectedMessage : "";
+
+    const originalContent = message.body || '';
+    const quoted = `
+        <div class="reply-quote" style="margin-top:20px; padding-top:10px; border-top:1px solid #ccc;">
+            <p>On ${message.date}, "${message.author}" wrote:</p>
+            <blockquote>${originalContent}</blockquote>
+        </div>
+    `;
+
+    this.openComposeModal("reply", {
+        ...message,
+        body: '', // ✅ để nội dung chính trống
+        quote: quoted // bạn có thể chèn quote vào editor khi mở modal
+    });
 }

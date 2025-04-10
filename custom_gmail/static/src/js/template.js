@@ -211,7 +211,7 @@ export default xml`
                                                 <button class="icon-btn star-btn" aria-label="Đánh dấu sao" t-on-click.stop="() => this.toggleStar(threadMsg)">
                                                     <i t-att-class="threadMsg.starred ? 'fa fa-star' : 'fa fa-star-o'"></i>
                                                 </button>
-                                                <button class="icon-btn reply-btn" aria-label="Phản hồi" t-on-click="(ev) => this.onReply(ev, state.selectedMessage)">
+                                                <button class="icon-btn reply-btn" aria-label="Phản hồi" t-on-click="(ev) => this.onReply(ev, threadMsg)">
                                                     <i class="fa fa-reply"></i>
                                                 </button>
                                                 <button class="icon-btn more-btn" aria-label="Thêm tùy chọn">
@@ -297,7 +297,7 @@ export default xml`
                             </div>
 
                             <div class="detail-actions">
-                                <button class="action-btn reply" t-on-click="(ev) => this.onReply(ev, state.selectedMessage)" style="margin-left: 60px;">
+                                <button class="action-btn reply"  t-on-click="(ev) => this.onReply(ev, threadMsg)" style="margin-left: 60px;">
                                     <i class="fa fa-reply"></i> Trả lời
                                 </button>
                                 <button class="action-btn reply-all" t-on-click="(ev) => this.onReplyAll(ev, state.selectedMessage)">

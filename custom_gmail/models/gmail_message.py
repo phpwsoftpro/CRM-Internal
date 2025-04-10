@@ -18,3 +18,11 @@ class GmailMessage(models.Model):
         string="Last Fetched Email ID",
         help="Stores the last fetched Gmail ID to optimize fetching new emails.",
     )
+    thread_id = fields.Char(
+        string="Thread ID",
+        help="Stores the thread ID of the email conversation.",
+    )
+    message_id = fields.Char(
+        string="Message ID",
+        help="Stores the message ID of the email.",
+    )
