@@ -125,18 +125,7 @@ export default xml`
                 <!-- Tabs -->
                 <div class="gmail-tabs">
                     <div class="tab active">
-                        <i class="fa fa-inbox"></i> Chính
-                    </div>
-                    <div class="tab">
-                        <i class="fa fa-tag"></i> Quảng cáo
-                    </div>
-                    <div class="tab">
-                        <i class="fa fa-users"></i> Mạng xã hội
-                        <span class="email-count blue">1 cuộc trò chuyện mới</span>
-                    </div>
-                    <div class="tab">
-                        <i class="fa fa-info-circle"></i> Nội dung cập nhật
-                        <span class="email-count orange">1 cuộc trò chuyện mới</span>
+                        <i class="fa fa-inbox"></i> <t t-esc="state.email" />
                     </div>
                 </div>
             </div>
@@ -211,7 +200,7 @@ export default xml`
                                                 <button class="icon-btn star-btn" aria-label="Đánh dấu sao" t-on-click.stop="() => this.toggleStar(threadMsg)">
                                                     <i t-att-class="threadMsg.starred ? 'fa fa-star' : 'fa fa-star-o'"></i>
                                                 </button>
-                                                <button class="icon-btn reply-btn" aria-label="Phản hồi" t-on-click="(ev) => this.onReply(ev, threadMsg)">
+                                                <button class="icon-btn reply" aria-label="Phản hồi" t-on-click="(ev) => this.onReply(ev, threadMsg)">
                                                     <i class="fa fa-reply"></i>
                                                 </button>
                                                 <button class="icon-btn more-btn" aria-label="Thêm tùy chọn">

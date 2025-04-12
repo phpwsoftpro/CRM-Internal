@@ -1,10 +1,11 @@
 /** @odoo-module **/
 
 export function onSendEmail() {
-    const thread_id = this.state.composeData.thread_id;
-    const parent_id = this.state.composeData.parent_message_id;
-    const parent_gmail_id = this.state.composeData.parent_gmail_id; // 👈 lấy thêm
-
+    const composeData = this.state.composeData || {};
+   
+    const thread_id = composeData.thread_id || null; 
+    const message_id = composeData.message_id || null; 
+    
     const to = document.querySelector('.compose-input.to').value;
     const subject = document.querySelector('.compose-input.subject').value;
     let body = window.editorInstance ? window.editorInstance.getData() : '';
@@ -12,25 +13,28 @@ export function onSendEmail() {
     body = body.replace(/<table/g, '<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;"');
     const splitIndex = body.indexOf('<div class="reply-quote">');
     const cleanBody = splitIndex !== -1 ? body.slice(0, splitIndex) : body;
+
     if (!to) {
         alert("Vui lòng nhập địa chỉ email.");
         return;
     }
 
+    const emailData = {
+        to: to,
+        subject: subject,
+        body_html: cleanBody,
+        thread_id: thread_id,  
+        message_id: message_id 
+    };
+    console.log("📤 Email sending data:", emailData); 
+    // Gửi email với dữ liệu đã kiểm tra
     fetch('/api/send_email', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
         },
-        body: JSON.stringify({
-            to: to,
-            subject: subject,
-            body_html: cleanBody,
-            thread_id: thread_id,
-            parent_id: parent_id,
-            parent_gmail_id: parent_gmail_id, 
-        })
+        body: JSON.stringify(emailData)
     })
     .then(response => response.json())
     .then(data => {
@@ -51,5 +55,6 @@ export function onSendEmail() {
     })
     .catch(err => {
         alert("Có lỗi xảy ra khi gửi email.");
+        console.log(err);
     });
 }
