@@ -123,21 +123,17 @@ export default xml`
                 </div>
 
                 <!-- Tabs -->
-                <div class="gmail-tabs">
-                    <div class="tab active">
-                        <i class="fa fa-inbox"></i> Chính
+                <div class="gmail-tab-container">
+                    <div class="gmail-tabs">
+                        <div class="tab active" data-email="abc@gmail.com">
+                            <i class="fa fa-inbox"></i> abc@gmail.com
+                        </div>
+                        <!-- Các tab khác -->
+                        <div class="tab add-tab" onclick="addGmailAccount()">
+                            <i class="fa fa-plus"></i>
+                        </div>
                     </div>
-                    <div class="tab">
-                        <i class="fa fa-tag"></i> Quảng cáo
-                    </div>
-                    <div class="tab">
-                        <i class="fa fa-users"></i> Mạng xã hội
-                        <span class="email-count blue">1 cuộc trò chuyện mới</span>
-                    </div>
-                    <div class="tab">
-                        <i class="fa fa-info-circle"></i> Nội dung cập nhật
-                        <span class="email-count orange">1 cuộc trò chuyện mới</span>
-                    </div>
+                    <div class="tab-content" id="gmail-inbox-container"></div>
                 </div>
             </div>
 

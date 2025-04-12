@@ -152,7 +152,6 @@ def send_email_with_gmail_api(
         }
 
 
-
 class MailAPIController(http.Controller):
 
     @http.route(

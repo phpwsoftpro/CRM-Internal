@@ -5,11 +5,13 @@ import base64
 from lxml import html
 import mimetypes
 from datetime import datetime, timedelta
+
 _logger = logging.getLogger(__name__)
 
 
 class GmailFetch(models.Model):
     _inherit = "mail.message"
+
     @api.model
     def action_redirect_gmail_auth(self):
         """

@@ -26,6 +26,7 @@
             "custom_gmail/static/src/js/functions/fillComposeForm.js",
             "custom_gmail/static/src/js/functions/onSendEmail.js",
             "custom_gmail/static/src/js/functions/index.js",
+            "custom_gmail/static/src/js/functions/addGmail.js",
             "custom_gmail/static/src/js/uiUtils.js",
             "custom_gmail/static/src/js/storageUtils.js",
             "custom_gmail/static/src/js/ckeditor.js",

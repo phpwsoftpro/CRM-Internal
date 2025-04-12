@@ -3,13 +3,14 @@ import { Component, markup, onMounted } from "@odoo/owl";
 import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
 import { initCKEditor, loadCKEditor } from "./ckeditor";
-import { onForward, onReply, onReplyAll, toggleStar } from "./functions/index";
+import { addGmailAccount } from "./functions/addGmail";
+import { onForward, onReply, onReplyAll, onSendEmail, toggleStar } from "./functions/index";
 import { openComposeModal } from "./functions/openComposeModal";
 import { initialState } from "./state";
 import { loadStarredState, saveStarredState } from "./storageUtils";
 import template from "./template";
-import { getInitialBgColor, getInitialColor, getStatusText, onRefresh,toggleAccounts, toggleDropdown, toggleDropdownAccount, toggleDropdownVertical, toggleSelect, toggleSelectAll, toggleThreadMessage, onCloseCompose, openFilePreview } from "./uiUtils";
-import { onSendEmail } from "./functions/index";
+import { getInitialBgColor, getInitialColor, getStatusText, onCloseCompose, onRefresh, openFilePreview, toggleAccounts, toggleDropdown, toggleDropdownAccount, toggleDropdownVertical, toggleSelect, toggleSelectAll, toggleThreadMessage } from "./uiUtils";
+
 export class GmailInbox extends Component {
     setup() {
         this.state = initialState();
@@ -37,6 +38,8 @@ export class GmailInbox extends Component {
         this.onCloseCompose = onCloseCompose.bind(this);
         this.onSendEmail = onSendEmail.bind(this);
         this.openFilePreview = openFilePreview;
+        this.addGmailAccount = addGmailAccount;
+
         onMounted(() => {
             this.loadMessages();
             this.state.selectedAccount = this.state.accounts[0];
