@@ -13,9 +13,15 @@ export function openComposeModal(mode, msg = null) {
     }
 }
 
-function openComposeModalInternal(mode, msg) {
+async function openComposeModalInternal(mode, msg) {
     this.state.composeMode = mode;
     this.state.showComposeModal = true;
+
+    this.state.composeData = {
+        thread_id: msg.thread_id || null,
+        message_id: msg.message_id || null,
+        original_sender: msg.sender || "",
+    };
 
     const modalTitle = document.querySelector(".compose-modal-header h3");
     if (modalTitle) {
@@ -27,33 +33,15 @@ function openComposeModalInternal(mode, msg) {
         }
     }
 
-    setTimeout(() => {
-
-        this.editorInstance = this.initCKEditor();
+    setTimeout(async () => {
+        this.editorInstance = await this.initCKEditor();
 
         let subject = msg.subject;
-        if (mode === "reply" && !msg.subject.startsWith("Re:")) {
-            subject = `Re: ${msg.subject}`;
-        } else if (mode === "forward" && !msg.subject.startsWith("Fwd:")) {
-            subject = `Fwd: ${msg.subject}`;
-        }
-
-        let body = "";
-        if (mode === "reply" || mode === "replyAll") {
-            body = `
-                <br><br>On ${msg.date_received}, ${msg.sender} wrote:<br>
-                <blockquote>${msg.body.replace(/\n/g, "<br>")}</blockquote>
-            `;
+        if (mode === "reply") {
+            subject = `${msg.subject}`;
         } else if (mode === "forward") {
-            body = `
-                <br><br>---------- Forwarded message ---------<br>
-                From: ${msg.sender} <${msg.email}><br>
-                Date: ${msg.date_received}<br>
-                Subject: ${msg.subject}<br><br>
-                ${msg.body.replace(/\n/g, "<br>")}
-            `;
+            subject = `${msg.subject}`;
         }
-
-        fillComposeForm(msg.sender, subject, body, this.editorInstance);
+        fillComposeForm(msg.sender, subject, this.editorInstance, mode);
     }, 100);
 }

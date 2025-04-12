@@ -15,7 +15,6 @@ export function loadCKEditor() {
             script.id = "ckeditor_script";
             script.src = "https://cdn.ckeditor.com/ckeditor5/39.0.0/classic/ckeditor.js";
             script.onload = () => {
-                console.log("CKEditor Loaded!");
                 resolve();
             };
             script.onerror = () => {
@@ -43,7 +42,6 @@ export async function initCKEditor() {
             })
             .then(editor => {
                 window.editorInstance = editor;
-                console.log("CKEditor initialized!");
             })
             .catch(error => {
                 console.error("Error initializing CKEditor:", error);

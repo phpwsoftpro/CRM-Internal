@@ -74,6 +74,8 @@ class GmailInboxController(http.Controller):
                     ),
                     "body": full_body,  # Dùng body HTML gốc
                     "attachments": attachment_list,
+                    "thread_id": msg.thread_id or "",
+                    "message_id": msg.message_id or "",
                 }
             )
 
@@ -107,12 +109,22 @@ def extract_email_only(email_str):
 
 
 def send_email_with_gmail_api(
-    access_token, sender_email, to_email, subject, html_content, thread_id=None
+    access_token, sender_email, to_email, subject, html_content, thread_id=None, message_id=None, headers=None
 ):
     message = MIMEMultipart("alternative")
     message["Subject"] = str(Header(subject, "utf-8"))
     message["From"] = sender_email
     message["To"] = to_email
+
+    # ✅ Dùng headers truyền vào nếu có
+    if headers:
+        for key, value in headers.items():
+            message[key] = value
+    elif message_id:
+        # fallback nếu không truyền headers
+        parent_ref = f"<{message_id}>"
+        message["In-Reply-To"] = parent_ref
+        message["References"] = parent_ref
 
     html_part = MIMEText(html_content, "html")
     message.attach(html_part)
@@ -120,28 +132,25 @@ def send_email_with_gmail_api(
     raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
 
     url = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
-    headers = {
+    api_headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",
     }
 
     body = {"raw": raw_message}
     if thread_id:
-        body["threadId"] = thread_id  # ✅ Giữ chuỗi hội thoại
+        body["threadId"] = thread_id,
 
-    response = requests.post(url, headers=headers, json=body)
 
+    response = requests.post(url, headers=api_headers, json=body)
+    _logger.info("📬 Gmail API Response xem Message Id: %s", json.dumps(response.json(), indent=2))
     if response.status_code in [200, 202]:
         resp_data = response.json()
-        _logger.info(
-            "Email sent via Gmail API: ID=%s, Thread=%s",
-            resp_data.get("id"),
-            resp_data.get("threadId"),
-        )
         return {
             "status": "success",
             "gmail_id": resp_data.get("id"),
             "thread_id": resp_data.get("threadId"),
+            "message_id": resp_data.get("messageId"),
         }
     else:
         _logger.error("Failed to send Gmail: %s", response.text)
@@ -176,8 +185,8 @@ class MailAPIController(http.Controller):
         to = extract_email_only(data.get("to", ""))
         subject = data.get("subject")
         body_html = data.get("body_html")
-        thread_id = data.get("thread_id")  # ✅ lấy thread_id nếu có
-
+        thread_id = data.get("thread_id") 
+        message_id = data.get("message_id")
         if not to or not subject or not body_html:
             _logger.warning(
                 "Missing fields: to=%s, subject=%s, body_html=%s",
@@ -206,8 +215,11 @@ class MailAPIController(http.Controller):
 
         # ✅ Truyền thread_id nếu có
         result = send_email_with_gmail_api(
-            access_token, sender_email, to, subject, body_html, thread_id
+            access_token, sender_email, to, subject, body_html, thread_id, message_id,
+            headers={
+                "In-Reply-To": f"<{message_id}>",
+                "References": f"<{message_id}>",
+            }
         )
-
         _logger.info("📤 Gmail API response: %s", result)
         return request.make_json_response(result)
