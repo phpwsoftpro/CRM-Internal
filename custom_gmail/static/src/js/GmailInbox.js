@@ -39,6 +39,7 @@ export class GmailInbox extends Component {
         this.openFilePreview = openFilePreview;
         onMounted(() => {
             this.loadMessages();
+            this.loadAuthenticatedEmail();
             this.state.selectedAccount = this.state.accounts[0];
         });
     }
@@ -51,6 +52,14 @@ export class GmailInbox extends Component {
             }));
         } catch (error) {
             console.error("Error fetching Gmail messages:", error);
+        }
+    }
+    async loadAuthenticatedEmail() {
+        try {
+            const result = await rpc('/gmail/user_email', {});
+            this.state.email = result.email || "No Email";
+        } catch (error) {
+            this.state.email = "Error loading email";
         }
     }
     onMessageClick(msg) {
