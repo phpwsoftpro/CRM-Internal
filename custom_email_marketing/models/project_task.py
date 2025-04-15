@@ -9,6 +9,8 @@ _logger = logging.getLogger(__name__)
 class ProjectTask(models.Model):
     _inherit = "project.task"
 
+    start_date = fields.Datetime(string="Start Date")
+
     remaining_days = fields.Char(
         string="Remaining Time", compute="_compute_remaining_days"
     )
@@ -25,6 +27,24 @@ class ProjectTask(models.Model):
         string="Connected Tasks",
     )
     cover_image = fields.Binary("Cover Image")
+
+    @api.onchange("start_date")
+    def _onchange_start_date(self):
+        if (
+            self.start_date
+            and self.date_deadline
+            and self.start_date > self.date_deadline
+        ):
+            self.start_date = self.date_deadline - timedelta(days=1)
+
+    @api.onchange("date_deadline")
+    def _onchange_date_deadline(self):
+        if (
+            self.start_date
+            and self.date_deadline
+            and self.start_date > self.date_deadline
+        ):
+            self.start_date = self.date_deadline - timedelta(days=1)
 
     @api.model
     def create(self, vals):
@@ -168,7 +188,7 @@ class ProjectTask(models.Model):
         """Open the task in a new tab using client action"""
         self.ensure_one()
         return {
-            'type': 'ir.actions.act_url',
-            'url': '/web#id=%d&model=project.task&view_type=form' % self.id,
-            'target': 'new',
+            "type": "ir.actions.act_url",
+            "url": "/web#id=%d&model=project.task&view_type=form" % self.id,
+            "target": "new",
         }

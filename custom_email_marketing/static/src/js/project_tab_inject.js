@@ -169,12 +169,12 @@
         sortWrapper.innerHTML = `
             <div class="d-flex gap-2 align-items-center">
                 <select class="form-select form-select-sm w-auto" id="project-sort-select">
-                    <option value="desc">Mới nhất</option>
-                    <option value="asc">Cũ nhất</option>
+                    <option value="desc">Newest first</option>
+                    <option value="asc">Oldest first</option>
                 </select>
                 <button type="button" id="unread-toggle-btn" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1">
                     <i class="fa fa-envelope"></i>
-                    <span>Chưa đọc</span>
+                    <span>Unread</span>
                 </button>
             </div>
         `;
