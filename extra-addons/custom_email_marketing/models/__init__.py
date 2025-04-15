@@ -8,3 +8,4 @@ from . import project_task
 from . import mail_mail
 from . import notification
 from . import mailing_contact
+from . import mailing_list_folder
