@@ -73,12 +73,7 @@
                                     'default_email_to': email,
                                     'default_recipient_ids': [(6, 0, [id])]
                                 }"/>
-                            <button
-                                name="action_open_contact_in_new_tab"
-                                type="object"
-                                class="btn-link"
-                                string="Open"
-                                icon="fa-external-link"/>
+                            <button name="action_open_contact_in_new_tab" type="object" class="btn-link" string="Open" icon="fa-external-link"/>
                         </list>
                         <kanban>
                             <field name="name"/>
@@ -108,16 +103,11 @@
                 <page string="Companies" name="companies" invisible="is_company">
                     <group>
                         <field name="parent_id"></field>
-                        <button name="action_open_company_in_new_tab"
-                                string="Open"
-                                type="object"
-                                icon="fa-external-link"
-                                class="btn-link link-companies"
-                                />
+                        <button name="action_open_company_in_new_tab" string="Open" type="object" icon="fa-external-link" class="btn-link link-companies" />
                     </group>
                 </page>
                 <page string="Mail History">
-                    <field name="message_ids" widget="mail_thread" options="{'res_model': 'res.partner'}"/>
+                    <field name="mail_history_summary" widget="html" readonly="1"/>
                 </page>
             </xpath>
         </field>
