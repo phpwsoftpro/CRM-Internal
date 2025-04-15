@@ -1,19 +1,30 @@
 from odoo import models, fields, api
 from .industries import INDUSTRY_SELECTION
 from odoo.exceptions import ValidationError
-
+from odoo.fields import Html
+import logging
+import pytz
 
 
 class ResPartner(models.Model):
     _inherit = "res.partner"
 
     last_activity_date = fields.Datetime(
-        string="Last Email Activity",
-        compute="_compute_last_activity_date",
-        help="Date of last email sent to this contact",
+        string="Last Email Activity", compute="_compute_last_activity_date", store=True
     )
+    mailing_trace_ids = fields.One2many(
+        "mailing.trace", "res_partner_id", string="Email History", store=True
+    )
+
+    mail_history_summary = Html(
+        string="Mail History Summary",
+        compute="_compute_mail_history_summary",
+        store=False,
+    )
+
     last_modified_date = fields.Datetime(
         string="Last Modified Date (GMT+7)",
+        compute="_compute_last_modified_date",
         store=True,
     )
     industry = fields.Selection(
@@ -24,12 +35,13 @@ class ResPartner(models.Model):
     timezone = fields.Char(string="Timezone")
     description = fields.Text(string="Description Company")
     linkedin_link = fields.Char(string="LinkedIn Link")
-    message_ids = fields.One2many(
-        "mail.message",
-        "res_id",
-        string="Messages",
-        domain=[("model", "=", "res.partner")],
+    mail_message_ids = fields.One2many(
+        comodel_name="mail.message",
+        inverse_name="res_id",
+        string="Mail History",
+        domain=lambda self: [("model", "=", "res.partner")],
     )
+
     company_owner_id = fields.Many2one("res.users", string="Company Owner")
     contact_owner_id = fields.Many2one("res.users", string="Contact Owner")
     send_again = fields.Boolean(string="Send Again")
@@ -49,19 +61,149 @@ class ResPartner(models.Model):
     tech_stack_ids = fields.Many2many("tech.stack", string="Area (Techstack)")
     email = fields.Char(string="Email", required=True)
     website = fields.Char(string="Website")
-    company_url = fields.Char(
-        string='Company Link',
-        compute='_compute_company_url'
-    )
+    company_url = fields.Char(string="Company Link", compute="_compute_company_url")
+
     @api.model
     def message_get_reply_to(self):
         reply_to = super(ResPartner, self).message_get_reply_to()
         return reply_to
 
-    @api.depends("write_date")
+    @api.depends("child_ids.mailing_trace_ids.sent_datetime")
+    def _compute_last_modified_date(self):
+        for partner in self:
+            if partner.is_company:
+                traces = self.env["mailing.trace"].search(
+                    [
+                        ("res_partner_id", "in", partner.child_ids.ids),
+                        ("sent_datetime", "!=", False),
+                    ]
+                )
+                dates = [t.sent_datetime for t in traces if t.sent_datetime]
+                partner.last_modified_date = max(dates) if dates else False
+            else:
+                # Optional: để contact rỗng
+                partner.last_modified_date = False
+
+    @api.depends("mailing_trace_ids.sent_datetime")
     def _compute_last_activity_date(self):
-        for record in self:
-            record.last_activity_date = record.write_date
+        for partner in self:
+            valid_dates = [
+                d for d in partner.mailing_trace_ids.mapped("sent_datetime") if d
+            ]
+            partner.last_activity_date = max(valid_dates) if valid_dates else False
+
+    @api.depends(
+        "mailing_trace_ids.sent_datetime",
+        "tech_stack_ids",
+        "child_ids.mailing_trace_ids.sent_datetime",
+    )
+    def _compute_mail_history_summary(self):
+        user_tz = self.env.user.tz or "UTC"
+        tz = pytz.timezone(user_tz)
+
+        for partner in self:
+            lines = []
+
+            if partner.is_company:
+                # 📩 Company: 1 dòng email mới nhất từ child_ids
+                trace = self.env["mailing.trace"].search(
+                    [
+                        ("res_partner_id", "in", partner.child_ids.ids),
+                        ("sent_datetime", "!=", False),
+                    ],
+                    order="sent_datetime desc",
+                    limit=1,
+                )
+
+                if trace:
+                    local_dt = trace.sent_datetime.replace(tzinfo=pytz.utc).astimezone(
+                        tz
+                    )
+                    date_str = local_dt.strftime("%d/%m/%Y %H:%M")
+                    email = trace.email or "-"
+
+                    # 🔍 Truy subject bằng email + thời điểm gửi
+                    subject = "-"
+                    if trace.email and trace.sent_datetime:
+                        mailing = (
+                            self.env["mailing.mailing"]
+                            .sudo()
+                            .search(
+                                [
+                                    (
+                                        "contact_list_ids.contact_ids.email",
+                                        "=",
+                                        trace.email,
+                                    ),
+                                    ("create_date", "<=", trace.sent_datetime),
+                                ],
+                                order="create_date desc",
+                                limit=1,
+                            )
+                        )
+                        subject = mailing.subject or "(No Subject)"
+
+                    lines.append(
+                        f"<div style='color:#444; font-weight:400;'>"
+                        f"🕒 {date_str} — 📧 {subject} — ✉️ {email} "
+                        f"</div>"
+                    )
+                else:
+                    lines.append("<div style='color:#888;'>No recent email sent.</div>")
+
+            else:
+                # 📩 Contact: nhiều dòng
+                traces = self.env["mailing.trace"].search(
+                    [("res_partner_id", "=", partner.id)],
+                    order="sent_datetime desc",
+                    limit=10,
+                )
+
+                for t in traces:
+                    if t.sent_datetime:
+                        local_dt = t.sent_datetime.replace(tzinfo=pytz.utc).astimezone(
+                            tz
+                        )
+                        date_str = local_dt.strftime("%d/%m/%Y %H:%M")
+                    else:
+                        date_str = "-"
+
+                    email = t.email or "-"
+
+                    # 🔍 Truy subject như trên
+                    subject = "-"
+                    if t.email and t.sent_datetime:
+                        mailing = (
+                            self.env["mailing.mailing"]
+                            .sudo()
+                            .search(
+                                [
+                                    (
+                                        "contact_list_ids.contact_ids.email",
+                                        "=",
+                                        t.email,
+                                    ),
+                                    ("create_date", "<=", t.sent_datetime),
+                                ],
+                                order="create_date desc",
+                                limit=1,
+                            )
+                        )
+                        subject = mailing.subject or "(No Subject)"
+
+                    # 🧠 Tech stack
+                    techs = t.res_partner_id.tech_stack_ids.mapped("name")
+                    tech_str = ", ".join(techs) if techs else "No Tech"
+
+                    lines.append(
+                        f"<div style='color:#444; font-weight:400;'>"
+                        f"🕒 {date_str} — 📧 {subject} — ✉️ {email}  — 🧠 {tech_str}"
+                        f"</div>"
+                    )
+
+            partner.mail_history_summary = (
+                "<div style='padding-left:10px;'>" + "".join(lines) + "</div>"
+            )
 
     @api.model
     def create(self, vals):
@@ -147,20 +289,21 @@ class ResPartner(models.Model):
             "target": "new",
             "context": ctx,
         }
-    
+
     def action_open_company_in_new_tab(self):
         self.ensure_one()
         if self.parent_id:
             return {
-                'type': 'ir.actions.act_url',
-                'url': f'/web#id={self.parent_id.id}&model=res.partner&view_type=form',
-                'target': 'new',
+                "type": "ir.actions.act_url",
+                "url": f"/web#id={self.parent_id.id}&model=res.partner&view_type=form",
+                "target": "new",
             }
+
     def action_open_contact_in_new_tab(self):
         """Open the contact in a new tab using client action"""
         self.ensure_one()
         return {
-            'type': 'ir.actions.act_url',
-            'url': '/web#id=%d&model=res.partner&view_type=form' % self.id,
-            'target': 'new',
+            "type": "ir.actions.act_url",
+            "url": "/web#id=%d&model=res.partner&view_type=form" % self.id,
+            "target": "new",
         }

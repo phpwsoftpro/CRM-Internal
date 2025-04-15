@@ -113,7 +113,7 @@ class MailingContact(models.Model):
                 "state": "sent",
             }
             self.env["mailing.history"].create(history_vals)
-
+    
 
 class ResCompany(models.Model):
     _inherit = "res.company"

@@ -1,3 +1,4 @@
+import json
 import requests
 import logging
 from odoo import models, api, fields
@@ -32,7 +33,7 @@ class GmailFetch(models.Model):
                 "https://gmail.googleapis.com/gmail/v1/users/me/profile",
                 headers=headers,
             )
-
+            
             if profile_response.status_code == 200:
                 email_address = profile_response.json().get("emailAddress")
                 config_params.set_param("gmail_authenticated_email", email_address)
@@ -227,6 +228,7 @@ class GmailFetch(models.Model):
                     break
 
                 gmail_id = msg.get("id")
+                thread_id = msg.get("threadId")
                 if gmail_id in existing_gmail_ids:
                     _logger.debug("⏭️ Bỏ qua vì đã tồn tại: %s", gmail_id)
                     continue
@@ -239,21 +241,27 @@ class GmailFetch(models.Model):
 
                 msg_data = message_response.json()
                 payload = msg_data.get("payload", {})
-                headers_list = payload.get("headers", [])
+                def extract_header(payload, header_name):
+                    headers = payload.get("headers", [])
+                    for h in headers:
+                        if h.get("name", "").lower() == header_name.lower():
+                            return h.get("value", "")
+                    for part in payload.get("parts", []):
+                        result = extract_header(part, header_name)
+                        if result:
+                            return result
+                    return ""
 
-                def get_header(name):
-                    return next(
-                        (h.get("value") for h in headers_list if h.get("name") == name),
-                        "",
-                    )
-
-                subject = get_header("Subject") or "No Subject"
-                sender = get_header("From")
-                receiver = get_header("To")
-                cc = get_header("Cc")
-                raw_date = get_header("Date")
+                subject = extract_header(payload, "Subject") or "No Subject"
+                sender = extract_header(payload, "From")
+                receiver = extract_header(payload, "To")
+                cc = extract_header(payload, "Cc")
+                raw_date = extract_header(payload, "Date")
                 date_received = self.parse_date(raw_date) if raw_date else None
 
+                raw_message_id = extract_header(payload, "Message-Id")
+                message_id = raw_message_id.strip("<>") if raw_message_id else ""
+                _logger.info("📦 Full Gmail message JSON:\n%s", json.dumps(msg_data, indent=2))
                 body_html = extract_all_html_parts(payload)
 
                 created_message = self.create(
@@ -268,6 +276,8 @@ class GmailFetch(models.Model):
                         "email_sender": sender,
                         "email_receiver": receiver,
                         "email_cc": cc,
+                        "thread_id": thread_id,
+                        "message_id": message_id,
                     }
                 )
 
@@ -309,6 +319,8 @@ class GmailFetch(models.Model):
                         "date_received": date_received,
                         "body": updated_body,
                         "attachments": attachment_list,
+                        "message_id": message_id,
+                        "thread_id": thread_id,
                     }
                 )
 

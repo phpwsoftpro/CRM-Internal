@@ -107,7 +107,7 @@
                     </group>
                 </page>
                 <page string="Mail History">
-                    <field name="message_ids" widget="mail_thread" options="{'res_model': 'res.partner'}"/>
+                    <field name="mail_history_summary" widget="html" readonly="1"/>
                 </page>
             </xpath>
         </field>
