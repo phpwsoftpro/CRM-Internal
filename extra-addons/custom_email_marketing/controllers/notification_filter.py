@@ -1,4 +1,5 @@
 import logging
+import pytz
 from odoo import http
 from odoo.http import request
 
@@ -31,14 +32,18 @@ class ProjectNotificationController(http.Controller):
             f"📥 Tìm thấy {len(task_messages)} thông báo được gửi đến partner_id: {partner_id}"
         )
 
+        # Chuyển timezone từ UTC sang Asia/Ho_Chi_Minh
+        tz = pytz.timezone("Asia/Ho_Chi_Minh")
+
         for msg in task_messages:
+            local_date = msg.date.astimezone(tz)
             notifications.append(
                 {
                     "id": msg.id,
                     "subject": msg.subject,
                     "body": msg.body,
                     "author": msg.author_id.name if msg.author_id else "System",
-                    "date": msg.date.strftime("%Y-%m-%d %H:%M:%S"),
+                    "date": local_date.strftime("%Y-%m-%d %H:%M:%S"),
                     "model": msg.model,
                     "res_id": msg.res_id,
                 }
