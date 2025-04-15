@@ -1,9 +1,6 @@
 import logging
 from odoo import models, api
 
-# Setting up logger
-_logger = logging.getLogger(__name__)
-
 
 class ProjectTask(models.Model):
     _inherit = "project.task"
@@ -13,22 +10,20 @@ class ProjectTask(models.Model):
         partner_id = self.env.user.partner_id.id
         notifications = []
 
-        _logger.info(f"Đang lấy thông báo cho partner_id: {partner_id}")
+        # _logger.info(f"Fetching notifications for partner_id: {partner_id}")
 
-        # Lấy thông báo liên quan đến project.task từ mail.notification
+        # Get notifications related to project.task from mail.notification
         notif_records = (
             self.env["mail.notification"]
             .sudo()
             .search(
                 [("res_partner_id", "=", partner_id)],
-                order="date desc",  # Điều này sẽ sử dụng trường 'date' trong mail.notification nếu có
+                order="date desc",  # Use the 'date' field in mail.notification if it exists
                 limit=50,
             )
         )
 
-        _logger.info(
-            f"Tìm thấy {len(notif_records)} thông báo cho partner_id: {partner_id}"
-        )
+        # _logger.info(f"Found {len(notif_records)} notifications for partner_id: {partner_id}")
 
         for notif in notif_records:
             msg = notif.mail_message_id
@@ -54,27 +49,27 @@ class ProjectTask(models.Model):
                     }
                 )
 
-        _logger.info(f"Trả về {len(notifications)} thông báo.")
+        # _logger.info(f"Returning {len(notifications)} notifications.")
         return notifications
 
     def _track_subtype(self, init_values):
         self.ensure_one()
         if "stage_id" in init_values:
-            _logger.info(
-                f"Skipping notification for stage change for task: {self.name}"
-            )
+            # _logger.info(
+            #     f"Skipping notification for stage change for task: {self.name}"
+            # )
             return False
         return super()._track_subtype(init_values)
 
     def _create_project_notification(self, subject, body):
         partner_ids = [u.partner_id.id for u in self.user_ids if u.partner_id]
         if not partner_ids:
-            _logger.warning(f"No partners found to notify for task: {self.name}")
+            # _logger.warning(f"No partners found to notify for task: {self.name}")
             return
 
-        _logger.info(
-            f"Creating notification for partners: {partner_ids} for task: {self.name}"
-        )
+        # _logger.info(
+        #     f"Creating notification for partners: {partner_ids} for task: {self.name}"
+        # )
 
         msg = (
             self.env["mail.message"]
@@ -92,7 +87,7 @@ class ProjectTask(models.Model):
             )
         )
 
-        # Tạo mail.notification thủ công để đảm bảo tất cả user thấy thông báo
+        # Create mail.notification manually to ensure all users see the notification
         for partner_id in partner_ids:
             self.env["mail.notification"].sudo().create(
                 {
@@ -105,18 +100,18 @@ class ProjectTask(models.Model):
 
     def _send_stage_change_notification(self, from_stage, to_stage):
         body = f"<p><b>{self.name}</b> was moved from <b>{from_stage}</b> to <b>{to_stage}</b></p>"
-        _logger.info(
-            f"Sending stage change notification for task: {self.name} from {from_stage} to {to_stage}"
-        )
+        # _logger.info(
+        #     f"Sending stage change notification for task: {self.name} from {from_stage} to {to_stage}"
+        # )
         self._create_project_notification(f"Task moved: {self.name}", body)
 
     def _send_create_notification(self):
         body = f"<p>A new task <b>{self.name}</b> has been created in project <b>{self.project_id.name}</b>.</p>"
-        _logger.info(f"Sending creation notification for task: {self.name}")
+        # _logger.info(f"Sending creation notification for task: {self.name}")
         self._create_project_notification(f"New Task: {self.name}", body)
 
     def message_post(self, **kwargs):
-        _logger.info(f"Posting message for task: {self.name} with data: {kwargs}")
+        # _logger.info(f"Posting message for task: {self.name} with data: {kwargs}")
         res = super().message_post(**kwargs)
 
         if kwargs.get("message_type") == "comment":
@@ -130,9 +125,9 @@ class ProjectTask(models.Model):
             # Get actual comment content
             comment_body = kwargs.get("body") or res.body
 
-            _logger.info(
-                f"Creating comment notifications for task: {self.name} with comment: {comment_body}"
-            )
+            # _logger.info(
+            #     f"Creating comment notifications for task: {self.name} with comment: {comment_body}"
+            # )
 
             # Create mail notification for each partner tagged in the comment
             for partner_id in notified_partner_ids:
@@ -149,9 +144,9 @@ class ProjectTask(models.Model):
                 )
 
                 if not existing:
-                    _logger.info(
-                        f"Creating notification for partner: {partner_id} for comment on task: {self.name}"
-                    )
+                    # _logger.info(
+                    #     f"Creating notification for partner: {partner_id} for comment on task: {self.name}"
+                    # )
                     self.env["mail.notification"].sudo().create(
                         {
                             "mail_message_id": res.id,  # Link to the existing comment
@@ -165,13 +160,13 @@ class ProjectTask(models.Model):
 
     @api.model
     def create(self, vals):
-        _logger.info(f"Creating task with values: {vals}")
+        # _logger.info(f"Creating task with values: {vals}")
         task = super().create(vals)
         task._send_create_notification()
         return task
 
     def write(self, vals):
-        _logger.info(f"Updating task {self.name} with values: {vals}")
+        # _logger.info(f"Updating task {self.name} with values: {vals}")
         old_stages = {rec.id: rec.stage_id.name for rec in self}
         res = super().write(vals)
         if "stage_id" in vals:
@@ -179,8 +174,8 @@ class ProjectTask(models.Model):
                 from_stage = old_stages.get(rec.id)
                 to_stage = rec.stage_id.name
                 if from_stage != to_stage:
-                    _logger.info(
-                        f"Task {rec.name} moved from {from_stage} to {to_stage}"
-                    )
+                    # _logger.info(
+                    #     f"Task {rec.name} moved from {from_stage} to {to_stage}"
+                    # )
                     rec._send_stage_change_notification(from_stage, to_stage)
         return res

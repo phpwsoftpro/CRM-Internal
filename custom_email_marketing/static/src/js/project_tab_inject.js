@@ -33,7 +33,10 @@
         const badge = document.querySelector('.o-project-tab-badge');
         if (badge) {
             badge.textContent = unreadCount;
-            badge.classList.toggle('d-none', unreadCount === 0);
+            if (badge && badge.classList) {
+                badge.classList.toggle('d-none', unreadCount === 0);
+            }
+            
         }
     }
 
@@ -143,7 +146,7 @@
     
         if (!tabHeader || !contentWrapper) return;
         if (tabHeader.querySelector('[data-project-tab="true"]')) return;
-    
+        
         const projectTab = document.createElement("button");
         projectTab.className = "o-mail-MessagingMenu-headerFilter btn btn-link px-2 py-1";
         projectTab.setAttribute("type", "button");
