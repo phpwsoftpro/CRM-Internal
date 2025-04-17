@@ -36,7 +36,7 @@ class MailingContact(models.Model):
             company = (
                 self.env["res.company"]
                 .sudo()
-                .search([("domain", "=", domain)], limit=1)
+                .search([("domain_email", "=", domain)], limit=1)
             )
             if not company:
                 company = (
@@ -45,7 +45,7 @@ class MailingContact(models.Model):
                     .create(
                         {
                             "name": company_name,
-                            "domain": domain,
+                            "domain_email": domain,
                         }
                     )
                 )
@@ -113,3 +113,11 @@ class MailingContact(models.Model):
                 "state": "sent",
             }
             self.env["mailing.history"].create(history_vals)
+
+
+class ResCompany(models.Model):
+    _inherit = "res.company"
+
+    domain_email = fields.Char(
+        string="Domain Email", help="Company domain extracted from email"
+    )

@@ -8,6 +8,16 @@
         return date.toLocaleString();
     }
 
+    function formatShortDate(dateStr) {
+        const date = new Date(dateStr);
+        const day = date.getDate();
+        const month = date.getMonth() + 1;
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        return `${day}/${month} ${hours}:${minutes}`;
+    }
+    
+
     function getReadIds() {
         try {
             return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -60,24 +70,23 @@
                 );
             });
 
-            // 👉 Sort theo dropdown
+            updateBadge(countUnread(projectNotifications));
+            let filteredNotifications = [...projectNotifications];
+
+            const unreadOnly = document.querySelector('#unread-toggle-btn')?.classList.contains('active');
+            if (unreadOnly) {
+                const readIds = getReadIds();
+                filteredNotifications = filteredNotifications.filter(msg => !readIds.includes(msg.id));
+            }
+
             const sortValue = document.querySelector('#project-sort-select')?.value || "desc";
-            projectNotifications.sort((a, b) => {
+            filteredNotifications.sort((a, b) => {
                 const dateA = new Date(a.date);
                 const dateB = new Date(b.date);
                 return sortValue === "asc" ? dateA - dateB : dateB - dateA;
             });
 
-            // 💡 Lọc chưa đọc nếu nút đang active
-            const unreadOnly = document.querySelector('#unread-toggle-btn')?.classList.contains('active');
-            if (unreadOnly) {
-                const readIds = getReadIds();
-                projectNotifications = projectNotifications.filter(msg => !readIds.includes(msg.id));
-            }
-
-            updateBadge(countUnread(projectNotifications));
-
-            for (const msg of projectNotifications) {
+            for (const msg of filteredNotifications) {
                 let taskName = `Task #${msg.res_id}`;
                 try {
                     const taskResp = await fetch("/web/dataset/call_kw/project.task/read", {
@@ -119,11 +128,17 @@
                     icon = '<i class="icon fa fa-comment text-success me-2"></i>';
                 }
 
+                const shortDateRange = msg.start_date && msg.date_deadline
+                    ? `${formatShortDate(msg.start_date)} → ${formatShortDate(msg.date_deadline)}`
+                    : '';
+
                 link.innerHTML = `
                     <div class="d-flex align-items-center mb-1">${icon}<div><strong>${taskName}</strong></div></div>
                     <div class="body mb-1">${msg.body || 'No body content'}</div>
-                    <div><small>${formatLocalDate(msg.date)} - ${msg.author}</small></div>
+                    ${shortDateRange ? `<div><small>📅 ${shortDateRange}</small></div>` : ''}
+                    <div class="mt-1"><small>${formatLocalDate(msg.date)} - <span class="fw-semibold" style="font-size: 13.5px;">${msg.author}</span></small></div>
                 `;
+                
 
                 link.addEventListener("click", () => {
                     markAsRead(msg.id);
@@ -134,7 +149,7 @@
                 contentEl.appendChild(link);
             }
 
-            if (projectNotifications.length === 0) {
+            if (filteredNotifications.length === 0) {
                 contentEl.innerHTML = `<div class="text-center text-muted p-3">Không có thông báo về task project.</div>`;
             }
 
@@ -163,7 +178,6 @@
         projectContent.style.minHeight = "300px";
         projectContent.style.overflowY = "auto";
 
-        // 💡 Tạo bộ lọc (dropdown + icon button)
         const sortWrapper = document.createElement("div");
         sortWrapper.className = "d-flex justify-content-between align-items-center p-2";
         sortWrapper.innerHTML = `
@@ -199,7 +213,6 @@
             await loadProjectNotifications(projectContent);
         });
 
-        // 💡 Gán sự kiện lọc
         sortWrapper.querySelector('#project-sort-select').addEventListener("change", () => {
             loadProjectNotifications(projectContent);
         });
@@ -239,7 +252,6 @@
         setupObserver();
     });
 
-    // 💡 Inject custom CSS cho icon button
     const style = document.createElement("style");
     style.textContent = `
         #unread-toggle-btn i {

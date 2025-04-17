@@ -243,3 +243,39 @@ a.list-group-item:hover {
 #unread-toggle-btn.active i {
     color: #fff;
 }
+
+/* menu sort  */
+.o_stage_hover_sort {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0 6px;
+}
+
+.o_hover_sort_btn {
+    background: #f0f0f0;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.o_hover_sort_dropdown {
+    background: white;
+    border: 1px solid #ccc;
+    margin-top: 2px;
+    padding: 4px;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.o_hover_sort_dropdown a {
+    display: block;
+    padding: 2px 8px;
+    color: #333;
+    text-decoration: none;
+}
+
+.o_hover_sort_dropdown a:hover {
+    background: #eee;
+}

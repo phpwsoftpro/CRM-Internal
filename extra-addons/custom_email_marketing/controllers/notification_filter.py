@@ -37,6 +37,23 @@ class ProjectNotificationController(http.Controller):
 
         for msg in task_messages:
             local_date = msg.date.astimezone(tz)
+            start_date = ""
+            deadline = ""
+
+            if msg.model == "project.task" and msg.res_id:
+                task = request.env["project.task"].sudo().browse(msg.res_id)
+                if task.exists():
+                    start_date = (
+                        task.start_date.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S")
+                        if task.start_date
+                        else ""
+                    )
+                    deadline = (
+                        task.date_deadline.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S")
+                        if task.date_deadline
+                        else ""
+                    )
+
             notifications.append(
                 {
                     "id": msg.id,
@@ -46,6 +63,8 @@ class ProjectNotificationController(http.Controller):
                     "date": local_date.strftime("%Y-%m-%d %H:%M:%S"),
                     "model": msg.model,
                     "res_id": msg.res_id,
+                    "start_date": start_date,
+                    "date_deadline": deadline,
                 }
             )
 
