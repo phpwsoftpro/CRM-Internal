@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="kanban_task_create_date_inherit" inherit_id="project.view_task_kanban">
+
+        <!-- Ensure create_date is loaded -->
+        <xpath expr="//field[@name='name']" position="before">
+            <field name="create_date" invisible="1"/>
+        </xpath>
+
+        <!-- Override record rendering to include data-create-date -->
+        <xpath expr="//kanban" position="inside">
+            <templates>
+                <t t-name="kanban-box">
+                    <div t-attf-class="oe_kanban_global_click o_kanban_record" t-att-data-id="record.id" t-att-data-create-date="record.create_date.raw_value">
+                        <field name="name"/>
+                        <!-- Thêm các field khác nếu có -->
+                    </div>
+                </t>
+            </templates>
+        </xpath>
+
+    </template>
+</odoo>

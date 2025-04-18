@@ -19,9 +19,7 @@
             "custom_email_marketing/static/src/js/chatter_filter.js",
             "custom_email_marketing/static/src/js/chatter_button_order.js",
             "custom_email_marketing/static/src/js/project_tab_inject.js",
-            # "custom_email_marketing/static/src/js/notification_project_tab.js",
-            # "custom_email_marketing/static/src/js/notification_webclient.js",
-            # "custom_email_marketing/static/src/template/project_template.xml",
+            # "custom_email_marketing/static/src/js/sort_menu.js",
         ],
     },
     "data": [
@@ -30,6 +28,7 @@
         "views/form_view_company.xml",
         "views/mailing_view_inherit.xml",
         "views/data/tech_stack_data.xml",
+        # "views/kanban_create_date.xml",
         "views/custom_send_email_template.xml",
         "views/project_task_view.xml",
         "views/send_task_email_wizard_view.xml",
