@@ -205,15 +205,15 @@ class ResPartner(models.Model):
                 "<div style='padding-left:10px;'>" + "".join(lines) + "</div>"
             )
 
-    @api.model
-    def create(self, vals):
-        if "name" in vals:
-            existing_company = self.search([("name", "=", vals["name"])], limit=1)
-            if existing_company:
-                raise ValidationError(
-                    "The company name already exists! Please choose another name."
-                )
-        return super(ResPartner, self).create(vals)
+    # @api.model
+    # def create(self, vals):
+    #     if "name" in vals:
+    #         existing_company = self.search([("name", "=", vals["name"])], limit=1)
+    #         if existing_company:
+    #             raise ValidationError(
+    #                 "The company name already exists! Please choose another name."
+    #             )
+    #     return super(ResPartner, self).create(vals)
 
     @api.constrains("email", "website")
     def _check_unique_email_website(self):

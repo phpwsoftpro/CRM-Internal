@@ -38,17 +38,28 @@ class MailingContact(models.Model):
                 .sudo()
                 .search([("x_domain_email", "=", domain)], limit=1)
             )
+
             if not company:
-                company = (
+                # Nếu domain chưa có, thì kiểm tra tên công ty đã có chưa
+                existing_company_name = (
                     self.env["res.company"]
                     .sudo()
-                    .create(
-                        {
-                            "name": company_name,
-                            "x_domain_email": domain,
-                        }
-                    )
+                    .search([("name", "=", company_name)], limit=1)
                 )
+                if existing_company_name:
+                    company = existing_company_name
+                else:
+                    # Tạo mới nếu tên cũng chưa tồn tại
+                    company = (
+                        self.env["res.company"]
+                        .sudo()
+                        .create(
+                            {
+                                "name": company_name,
+                                "x_domain_email": domain,
+                            }
+                        )
+                    )
 
             # Kiểm tra partner đã tồn tại chưa
             partner = (
@@ -63,10 +74,7 @@ class MailingContact(models.Model):
                 company_partner = (
                     self.env["res.partner"]
                     .sudo()
-                    .search(
-                        [("is_company", "=", True), ("name", "=", company_name)],
-                        limit=1,
-                    )
+                    .search([("is_company", "=", True), ("company_id", "=", company.id)], limit=1)
                 )
 
                 if not company_partner:
