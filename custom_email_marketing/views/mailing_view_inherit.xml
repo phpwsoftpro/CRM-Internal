@@ -10,4 +10,17 @@
             </field>
         </field>
     </record>
+    <record id="mass_mailing.action_view_mass_mailing_lists" model="ir.actions.act_window">
+        <field name="context">{'group_by': 'folder_id'}</field>
+    </record>
+    <record id="view_mailing_list_search_folder" model="ir.ui.view">
+        <field name="name">mailing.list.search.folder</field>
+        <field name="model">mailing.list</field>
+        <field name="inherit_id" ref="mass_mailing.mailing_list_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <filter string="Folder" name="group_by_folder" context="{'group_by': 'folder_id'}"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>
