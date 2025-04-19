@@ -4,6 +4,7 @@ from odoo.exceptions import ValidationError
 from odoo.fields import Html
 import logging
 import pytz
+from collections import OrderedDict
 
 
 class ResPartner(models.Model):
@@ -104,27 +105,55 @@ class ResPartner(models.Model):
         for partner in self:
             lines = []
 
+            # Bắt đầu bảng với STT
+            lines.append(
+                "<table style='border-collapse: collapse; width: 100%; font-size: 13px;'>"
+                "<thead>"
+                "<tr style='border-bottom: 1px solid #ccc;'>"
+                "<th style='text-align: left; padding: 6px;'>#</th>"
+                "<th style='text-align: left; padding: 6px;'>✉️ Email</th>"
+                "<th style='text-align: left; padding: 6px;'>📧 Subject</th>"
+                "<th style='text-align: left; padding: 6px;'>🕒 Sent Date</th>"
+                "</tr>"
+                "</thead><tbody>"
+            )
+
             if partner.is_company:
-                # 📩 Company: 1 dòng email mới nhất từ child_ids
-                trace = self.env["mailing.trace"].search(
+                # 🏢 Company: Lấy trace mới nhất theo từng email từ các child
+                traces = self.env["mailing.trace"].search(
                     [
                         ("res_partner_id", "in", partner.child_ids.ids),
                         ("sent_datetime", "!=", False),
                     ],
                     order="sent_datetime desc",
-                    limit=1,
                 )
 
-                if trace:
+                unique_traces = OrderedDict()
+                for t in traces:
+                    if t.email and t.email not in unique_traces:
+                        unique_traces[t.email] = t
+
+                traces_to_display = unique_traces.values()
+            else:
+                # 👤 Contact: hiển thị tất cả các trace
+                traces_to_display = self.env["mailing.trace"].search(
+                    [("res_partner_id", "=", partner.id)],
+                    order="sent_datetime desc",
+                )
+
+            if traces_to_display:
+                for idx, trace in enumerate(traces_to_display, start=1):
+                    if not trace.sent_datetime:
+                        continue
+
                     local_dt = trace.sent_datetime.replace(tzinfo=pytz.utc).astimezone(
                         tz
                     )
                     date_str = local_dt.strftime("%d/%m/%Y %H:%M")
                     email = trace.email or "-"
 
-                    # 🔍 Truy subject bằng email + thời điểm gửi
                     subject = "-"
-                    if trace.email and trace.sent_datetime:
+                    if trace.email:
                         mailing = (
                             self.env["mailing.mailing"]
                             .sudo()
@@ -144,76 +173,30 @@ class ResPartner(models.Model):
                         subject = mailing.subject or "(No Subject)"
 
                     lines.append(
-                        f"<div style='color:#444; font-weight:400;'>"
-                        f"🕒 {date_str} — 📧 {subject} — ✉️ {email} "
-                        f"</div>"
+                        f"<tr>"
+                        f"<td style='padding: 6px; color:#444;'>{idx}</td>"
+                        f"<td style='padding: 6px; color:#444;'>{email}</td>"
+                        f"<td style='padding: 6px; color:#444;'>{subject}</td>"
+                        f"<td style='padding: 6px; color:#444;'>{date_str}</td>"
+                        f"</tr>"
                     )
-                else:
-                    lines.append("<div style='color:#888;'>No recent email sent.</div>")
-
             else:
-                # 📩 Contact: nhiều dòng
-                traces = self.env["mailing.trace"].search(
-                    [("res_partner_id", "=", partner.id)],
-                    order="sent_datetime desc",
-                    limit=10,
+                lines.append(
+                    "<tr><td colspan='4' style='padding: 6px; color: #888;'>No email history found.</td></tr>"
                 )
 
-                for t in traces:
-                    if t.sent_datetime:
-                        local_dt = t.sent_datetime.replace(tzinfo=pytz.utc).astimezone(
-                            tz
-                        )
-                        date_str = local_dt.strftime("%d/%m/%Y %H:%M")
-                    else:
-                        date_str = "-"
+            lines.append("</tbody></table>")
+            partner.mail_history_summary = "".join(lines)
 
-                    email = t.email or "-"
-
-                    # 🔍 Truy subject như trên
-                    subject = "-"
-                    if t.email and t.sent_datetime:
-                        mailing = (
-                            self.env["mailing.mailing"]
-                            .sudo()
-                            .search(
-                                [
-                                    (
-                                        "contact_list_ids.contact_ids.email",
-                                        "=",
-                                        t.email,
-                                    ),
-                                    ("create_date", "<=", t.sent_datetime),
-                                ],
-                                order="create_date desc",
-                                limit=1,
-                            )
-                        )
-                        subject = mailing.subject or "(No Subject)"
-
-                    # 🧠 Tech stack
-                    techs = t.res_partner_id.tech_stack_ids.mapped("name")
-                    tech_str = ", ".join(techs) if techs else "No Tech"
-
-                    lines.append(
-                        f"<div style='color:#444; font-weight:400;'>"
-                        f"🕒 {date_str} — 📧 {subject} — ✉️ {email}  — 🧠 {tech_str}"
-                        f"</div>"
-                    )
-
-            partner.mail_history_summary = (
-                "<div style='padding-left:10px;'>" + "".join(lines) + "</div>"
-            )
-
-    @api.model
-    def create(self, vals):
-        if "name" in vals:
-            existing_company = self.search([("name", "=", vals["name"])], limit=1)
-            if existing_company:
-                raise ValidationError(
-                    "The company name already exists! Please choose another name."
-                )
-        return super(ResPartner, self).create(vals)
+    # @api.model
+    # def create(self, vals):
+    #     if "name" in vals:
+    #         existing_company = self.search([("name", "=", vals["name"])], limit=1)
+    #         if existing_company:
+    #             raise ValidationError(
+    #                 "The company name already exists! Please choose another name."
+    #             )
+    #     return super(ResPartner, self).create(vals)
 
     @api.constrains("email", "website")
     def _check_unique_email_website(self):
