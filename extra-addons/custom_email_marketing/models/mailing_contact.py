@@ -40,7 +40,8 @@ class MailingContact(models.Model):
             )
 
             if not company:
-                company = (
+                # Nếu domain chưa có, thì kiểm tra tên công ty đã có chưa
+                existing_company_name = (
                     self.env["res.company"]
                     .sudo()
                     .search([("name", "=", company_name)], limit=1)
