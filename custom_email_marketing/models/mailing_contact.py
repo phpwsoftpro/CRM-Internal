@@ -110,20 +110,6 @@ class MailingContact(models.Model):
             if not contact.partner_id:
                 contact.sudo().write({"partner_id": partner.id})
 
-    # def send_email(self, subject, body):
-    #     """Giả lập hàm gửi email"""
-    #     for contact in self:
-    #         history_vals = {
-    #             "contact_id": contact.id,
-    #             "company_id": (
-    #                 contact.partner_id.company_id.id if contact.partner_id else False
-    #             ),
-    #             "subject": subject,
-    #             "body": body,
-    #             "state": "sent",
-    #         }
-    #         self.env["mailing.history"].create(history_vals)
-
 
 class ResCompany(models.Model):
     _inherit = "res.company"
