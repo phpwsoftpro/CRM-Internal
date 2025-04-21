@@ -67,5 +67,4 @@ class ProjectNotificationController(http.Controller):
                     "date_deadline": deadline,
                 }
             )
-
         return {"result": notifications}
