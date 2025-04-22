@@ -4,3 +4,4 @@ from . import gmail_fetch
 from . import gmail_sync
 from . import gmail_utils
 from . import gmail_inbox
+from . import gmail_account

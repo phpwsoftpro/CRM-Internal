@@ -35,7 +35,7 @@ class GmailFetch(models.Model):
                 "https://gmail.googleapis.com/gmail/v1/users/me/profile",
                 headers=headers,
             )
-            
+
             if profile_response.status_code == 200:
                 email_address = profile_response.json().get("emailAddress")
                 config_params.set_param("gmail_authenticated_email", email_address)
@@ -77,111 +77,178 @@ class GmailFetch(models.Model):
             "target": "new",
         }
 
-    @api.model
-    def fetch_gmail_messages(self, access_token):
-        _logger.info("▶️ Bắt đầu fetch Gmail messages...")
+    # @api.model
+    # def fetch_gmail_messages(self, access_token):
+    #     _logger.info("▶️ Bắt đầu fetch Gmail messages...")
 
-        headers = {"Authorization": f"Bearer {access_token}"}
-        base_url = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
+    #     headers = {"Authorization": f"Bearer {access_token}"}
+    #     base_url = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
+    #     max_messages = 15
+    #     fetched_count = 0
+    #     next_page_token = None
+    #     thirty_days_ago = fields.Datetime.to_string(datetime.now() - timedelta(days=30))
+    #     existing_gmail_ids = set(
+    #         self.search([("create_date", ">=", thirty_days_ago)]).mapped("gmail_id")
+    #     )
+
+    # def extract_all_html_parts(payload):
+    #     html_parts = []
+
+    #     def recurse(part):
+    #         mime_type = part.get("mimeType")
+    #         body_data = part.get("body", {}).get("data")
+    #         if mime_type == "text/html" and body_data:
+    #             try:
+    #                 html_parts.append(
+    #                     base64.urlsafe_b64decode(body_data + "==").decode("utf-8")
+    #                 )
+    #             except Exception as e:
+    #                 _logger.warning("❌ Decode HTML failed: %s", e)
+    #         for sub in part.get("parts", []):
+    #             recurse(sub)
+
+    #     recurse(payload)
+    #     return "\n".join(html_parts) if html_parts else ""
+
+    def save_attachments(self, payload, gmail_msg_id, res_id, headers):
+        saved_attachments = []
+
+        def recurse(part):
+            filename = part.get("filename")
+            body_info = part.get("body", {})
+            att_id = body_info.get("attachmentId")
+            content_id = part.get("headers", [])
+
+            # Lấy Content-ID (CID) nếu có
+            cid = next(
+                (
+                    h.get("value").strip("<>")
+                    for h in content_id
+                    if h.get("name") == "Content-ID"
+                ),
+                None,
+            )
+
+            if filename and att_id:
+                att_url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{gmail_msg_id}/attachments/{att_id}"
+                att_response = requests.get(att_url, headers=headers)
+                if att_response.status_code == 200:
+                    att_data = att_response.json().get("data")
+                    if att_data:
+                        try:
+                            file_data = base64.urlsafe_b64decode(att_data + "==")
+                        except Exception as e:
+                            _logger.warning(
+                                "❌ Lỗi decode attachment %s: %s", filename, e
+                            )
+                            return
+
+                        # Dự đoán mimetype nếu Google API không trả về
+                        mimetype = (
+                            part.get("mimeType")
+                            or mimetypes.guess_type(filename)[0]
+                            or "application/octet-stream"
+                        )
+
+                        att_vals = {
+                            "name": filename,
+                            "datas": base64.b64encode(file_data).decode(
+                                "utf-8"
+                            ),  # 🧠 decode để đúng định dạng Odoo
+                            "res_model": "mail.message",
+                            "res_id": res_id,
+                            "mimetype": mimetype,
+                            "type": "binary",
+                        }
+
+                        if cid:
+                            att_vals["description"] = (
+                                cid  # Dùng để replace ảnh inline (cid)
+                            )
+
+                        att = self.env["ir.attachment"].sudo().create(att_vals)
+                        saved_attachments.append(att)
+                        _logger.debug(
+                            "✅ Attachment saved: %s - CID: %s - Type: %s",
+                            filename,
+                            cid,
+                            mimetype,
+                        )
+
+            for sub in part.get("parts", []):
+                recurse(sub)
+
+        recurse(payload)
+        return saved_attachments
+
+    def extract_all_html_parts(self, payload):
+        html_parts = []
+
+        def recurse(part):
+            mime_type = part.get("mimeType")
+            body_data = part.get("body", {}).get("data")
+            if mime_type == "text/html" and body_data:
+                try:
+                    html_parts.append(
+                        base64.urlsafe_b64decode(body_data + "==").decode("utf-8")
+                    )
+                except Exception as e:
+                    _logger.warning("❌ Decode HTML failed: %s", e)
+            for sub in part.get("parts", []):
+                recurse(sub)
+
+        recurse(payload)
+        return "\n".join(html_parts) if html_parts else ""
+
+    @api.model
+    def fetch_gmail_for_account(self, account_id):
+        account = self.env["gmail.account"].sudo().browse(account_id)
+        if not account:
+            return
+
         max_messages = 15
         fetched_count = 0
         next_page_token = None
+        base_url = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
+
         thirty_days_ago = fields.Datetime.to_string(datetime.now() - timedelta(days=30))
         existing_gmail_ids = set(
             self.search([("create_date", ">=", thirty_days_ago)]).mapped("gmail_id")
         )
 
-        def extract_all_html_parts(payload):
-            html_parts = []
+        headers = {"Authorization": f"Bearer {account.access_token}"}
+        response = requests.get(
+            "https://www.googleapis.com/gmail/v1/users/me/messages",
+            headers=headers,
+            params={"maxResults": 10},
+        )
+        for m in response.json().get("messages", []):
+            msg_detail = requests.get(
+                f"https://www.googleapis.com/gmail/v1/users/me/messages/{m['id']}",
+                headers=headers,
+                params={"format": "full"},
+            ).json()
 
-            def recurse(part):
-                mime_type = part.get("mimeType")
-                body_data = part.get("body", {}).get("data")
-                if mime_type == "text/html" and body_data:
-                    try:
-                        html_parts.append(
-                            base64.urlsafe_b64decode(body_data + "==").decode("utf-8")
-                        )
-                    except Exception as e:
-                        _logger.warning("❌ Decode HTML failed: %s", e)
-                for sub in part.get("parts", []):
-                    recurse(sub)
+            subject = ""
+            headers_list = msg_detail.get("payload", {}).get("headers", [])
+            for h in headers_list:
+                if h["name"] == "Subject":
+                    subject = h["value"]
 
-            recurse(payload)
-            return "\n".join(html_parts) if html_parts else ""
-
-        def save_attachments(payload, gmail_msg_id, res_id):
-            saved_attachments = []
-
-            def recurse(part):
-                filename = part.get("filename")
-                body_info = part.get("body", {})
-                att_id = body_info.get("attachmentId")
-                content_id = part.get("headers", [])
-
-                # Lấy Content-ID (CID) nếu có
-                cid = next(
-                    (
-                        h.get("value").strip("<>")
-                        for h in content_id
-                        if h.get("name") == "Content-ID"
-                    ),
-                    None,
-                )
-
-                if filename and att_id:
-                    att_url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{gmail_msg_id}/attachments/{att_id}"
-                    att_response = requests.get(att_url, headers=headers)
-                    if att_response.status_code == 200:
-                        att_data = att_response.json().get("data")
-                        if att_data:
-                            try:
-                                file_data = base64.urlsafe_b64decode(att_data + "==")
-                            except Exception as e:
-                                _logger.warning(
-                                    "❌ Lỗi decode attachment %s: %s", filename, e
-                                )
-                                return
-
-                            # Dự đoán mimetype nếu Google API không trả về
-                            mimetype = (
-                                part.get("mimeType")
-                                or mimetypes.guess_type(filename)[0]
-                                or "application/octet-stream"
-                            )
-
-                            att_vals = {
-                                "name": filename,
-                                "datas": base64.b64encode(file_data).decode(
-                                    "utf-8"
-                                ),  # 🧠 decode để đúng định dạng Odoo
-                                "res_model": "mail.message",
-                                "res_id": res_id,
-                                "mimetype": mimetype,
-                                "type": "binary",
-                            }
-
-                            if cid:
-                                att_vals["description"] = (
-                                    cid  # Dùng để replace ảnh inline (cid)
-                                )
-
-                            att = self.env["ir.attachment"].sudo().create(att_vals)
-                            saved_attachments.append(att)
-                            _logger.debug(
-                                "✅ Attachment saved: %s - CID: %s - Type: %s",
-                                filename,
-                                cid,
-                                mimetype,
-                            )
-
-                for sub in part.get("parts", []):
-                    recurse(sub)
-
-            recurse(payload)
-            return saved_attachments
+            self.create(
+                {
+                    "subject": subject,
+                    "body": "<i>Mail body (chưa parse)</i>",
+                    "date": datetime.utcnow(),
+                    "author_id": account.user_id.partner_id.id,
+                    "model": "gmail.account",
+                    "res_id": account.id,
+                    "is_gmail": True,
+                }
+            )
 
         def replace_cid_links(html_body, attachments):
+
             try:
                 tree = html.fromstring(html_body)
                 for img in tree.xpath("//img"):
@@ -211,7 +278,12 @@ class GmailFetch(models.Model):
         processed_messages = []
 
         while fetched_count < max_messages:
-            params = {"maxResults": 15}
+            after_ts = (
+                int(account.last_fetch_at.timestamp())
+                if account.last_fetch_at
+                else int((datetime.utcnow() - timedelta(days=7)).timestamp())
+            )
+            params = {"maxResults": 15, "q": f"after:{after_ts}"}
             if next_page_token:
                 params["pageToken"] = next_page_token
 
@@ -231,9 +303,10 @@ class GmailFetch(models.Model):
 
                 gmail_id = msg.get("id")
                 thread_id = msg.get("threadId")
-                if gmail_id in existing_gmail_ids:
-                    _logger.debug("⏭️ Bỏ qua vì đã tồn tại: %s", gmail_id)
-                    continue
+                existing_msg = self.search([("gmail_id", "=", gmail_id)], limit=1)
+                if existing_msg:
+                    _logger.debug("🔁 Đã tồn tại, sẽ xoá để tạo lại: %s", gmail_id)
+                    existing_msg.unlink()
 
                 detail_url = f"{base_url}/{gmail_id}?format=full"
                 message_response = requests.get(detail_url, headers=headers)
@@ -243,6 +316,7 @@ class GmailFetch(models.Model):
 
                 msg_data = message_response.json()
                 payload = msg_data.get("payload", {})
+
                 def extract_header(payload, header_name):
                     headers = payload.get("headers", [])
                     for h in headers:
@@ -263,8 +337,10 @@ class GmailFetch(models.Model):
 
                 raw_message_id = extract_header(payload, "Message-Id")
                 message_id = raw_message_id.strip("<>") if raw_message_id else ""
-                _logger.info("📦 Full Gmail message JSON:\n%s", json.dumps(msg_data, indent=2))
-                body_html = extract_all_html_parts(payload)
+                _logger.info(
+                    "📦 Full Gmail message JSON:\n%s", json.dumps(msg_data, indent=2)
+                )
+                body_html = self.extract_all_html_parts(payload)
 
                 created_message = self.create(
                     {
@@ -283,7 +359,9 @@ class GmailFetch(models.Model):
                     }
                 )
 
-                attachments = save_attachments(payload, gmail_id, created_message.id)
+                attachments = self.save_attachments(
+                    payload, gmail_id, created_message.id, headers
+                )
                 # Build danh sách attachment trả ra ngoài (API, giao diện...)
                 attachment_list = [
                     {
@@ -333,4 +411,5 @@ class GmailFetch(models.Model):
                 break
 
         _logger.info("✅ Đồng bộ Gmail hoàn tất (%s messages)", fetched_count)
+        account.last_fetch_at = fields.Datetime.now()
         return processed_messages

@@ -1,15 +1,29 @@
 /** @odoo-module **/
-import { Component, markup, onMounted } from "@odoo/owl";
+
+import { Component, onMounted } from "@odoo/owl";
 import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
 import { initCKEditor, loadCKEditor } from "./ckeditor";
-import { addGmailAccount } from "./functions/addGmail";
 import { onForward, onReply, onReplyAll, onSendEmail, toggleStar } from "./functions/index";
 import { openComposeModal } from "./functions/openComposeModal";
 import { initialState } from "./state";
 import { loadStarredState, saveStarredState } from "./storageUtils";
 import template from "./template";
-import { getInitialBgColor, getInitialColor, getStatusText, onCloseCompose, onRefresh, openFilePreview, toggleAccounts, toggleDropdown, toggleDropdownAccount, toggleDropdownVertical, toggleSelect, toggleSelectAll, toggleThreadMessage } from "./uiUtils";
+import {
+    getInitialBgColor,
+    getInitialColor,
+    getStatusText,
+    onCloseCompose,
+    onRefresh,
+    openFilePreview,
+    toggleAccounts,
+    toggleDropdown,
+    toggleDropdownAccount,
+    toggleDropdownVertical,
+    toggleSelect,
+    toggleSelectAll,
+    toggleThreadMessage,
+} from "./uiUtils";
 
 export class GmailInbox extends Component {
     setup() {
@@ -29,7 +43,7 @@ export class GmailInbox extends Component {
         this.loadStarredState = loadStarredState.bind(this);
         this.initCKEditor = initCKEditor.bind(this);
         this.loadCKEditor = loadCKEditor.bind(this);
-        this.getInitialColor = getInitialColor.bind(this); 
+        this.getInitialColor = getInitialColor.bind(this);
         this.getInitialBgColor = getInitialBgColor.bind(this);
         this.getStatusText = getStatusText.bind(this);
         this.toggleSelect = toggleSelect.bind(this);
@@ -38,89 +52,90 @@ export class GmailInbox extends Component {
         this.onCloseCompose = onCloseCompose.bind(this);
         this.onSendEmail = onSendEmail.bind(this);
         this.openFilePreview = openFilePreview;
-        this.addGmailAccount = addGmailAccount;
-
+        this.addGmailAccount = this._addGmailAccount;
+        this.switchTab = this._switchTab.bind(this);
+        this.state.messagesByEmail = {};
+    
+        // 👇 Khôi phục các tab tài khoản đã lưu trong localStorage
+        const savedAccounts = localStorage.getItem("gmail_accounts");
+        if (savedAccounts) {
+            this.state.accounts = JSON.parse(savedAccounts);
+            if (this.state.accounts.length > 0) {
+                this.state.activeTabId = this.state.accounts[0].id;
+                this.loadMessages(this.state.accounts[0].email);
+            }
+        }
         onMounted(() => {
             this.loadMessages();
             this.loadAuthenticatedEmail();
             this.state.selectedAccount = this.state.accounts[0];
         });
     }
-    async loadMessages() {
-        try {
-            const messages = await rpc('/gmail/messages', {});
-            this.state.messages = messages.map(msg => ({
-                ...msg,
-                body: markup(msg.body),  // ✅ Đánh dấu HTML là an toàn để t-raw dùng
-            }));
-        } catch (error) {
-            console.error("Error fetching Gmail messages:", error);
+    
+    async loadMessages(email) {
+        // Clear UI cũ
+        this.state.messages = [];
+    
+        // Nếu đã có cache và muốn dùng lại (tuỳ chọn)
+        if (this.state.messagesByEmail[email]) {
+            this.state.messages = this.state.messagesByEmail[email];
+            return;
         }
+    
+        // Gọi API lấy 15 email mới nhất
+        const messages = await rpc("/gmail/messages", {
+            email: email,
+        });
+    
+        // Lưu cache và cập nhật UI
+        this.state.messagesByEmail[email] = messages;
+        this.state.messages = messages;
     }
+    
+
+
     async loadAuthenticatedEmail() {
         try {
-            const result = await rpc('/gmail/user_email', {});
+            const result = await rpc("/gmail/user_email", {});
             this.state.email = result.email || "No Email";
         } catch (error) {
             this.state.email = "Error loading email";
         }
     }
+
     onMessageClick(msg) {
-        if (!msg) {
-            console.warn("No message provided to onMessageClick");
-            return;
-        }
-    
-        // Set selected message
+        if (!msg) return;
         this.state.selectedMessage = msg;
-    
-        // Load thread if available
         const threadId = msg.thread_id;
         const thread = threadId ? this.state.threads?.[threadId] : null;
-    
-        if (Array.isArray(thread) && thread.length > 0) {
-            this.state.currentThread = thread;
-        } else {
-            // Fallback: single message only
-            this.state.currentThread = [msg];
-        }
-    
-        // Mark as read if unread
+        this.state.currentThread = Array.isArray(thread) && thread.length ? thread : [msg];
+
         if (msg.unread) {
             msg.unread = false;
             this.updateMessage(msg);
         }
     }
-    
+
     updateMessage(msg) {
-        // Find message in main messages list and update it
-        const index = this.state.messages.findIndex(m => m.id === msg.id);
-        if (index !== -1) {
-            this.state.messages[index] = {...msg};
-        }
-        
-        // Also update in threads if present
+        const index = this.state.messages.findIndex((m) => m.id === msg.id);
+        if (index !== -1) this.state.messages[index] = { ...msg };
+
         if (msg.thread_id && this.state.threads[msg.thread_id]) {
-            const threadIndex = this.state.threads[msg.thread_id].findIndex(m => m.id === msg.id);
+            const threadIndex = this.state.threads[msg.thread_id].findIndex((m) => m.id === msg.id);
             if (threadIndex !== -1) {
-                this.state.threads[msg.thread_id][threadIndex] = {...msg};
+                this.state.threads[msg.thread_id][threadIndex] = { ...msg };
             }
         }
-        
-        // If this is the selected message, update that too
-        if (this.state.selectedMessage && this.state.selectedMessage.id === msg.id) {
-            this.state.selectedMessage = {...msg};
+
+        if (this.state.selectedMessage?.id === msg.id) {
+            this.state.selectedMessage = { ...msg };
         }
-        
-        // Persist starred state if necessary
-        if ('starred' in msg) {
-            this.saveStarredState();
-        }
+
+        if ("starred" in msg) this.saveStarredState();
     }
 
     onComposeClick() {
         this.state.showComposeModal = !this.state.showComposeModal;
-    
         if (this.state.showComposeModal) {
             setTimeout(() => initCKEditor(), 100);
         } else if (window.editorInstance) {
@@ -128,6 +143,109 @@ export class GmailInbox extends Component {
             window.editorInstance = null;
         }
     }
+
+    _addGmailAccount = async () => {
+        const popup = window.open("", "_blank", "width=700,height=800");
+        popup.location.href = "/gmail/auth/start";
+    
+        if (!popup) {
+            console.error("❌ Không thể mở popup xác thực Gmail.");
+            return;
+        }
+    
+        const handleMessage = async (event) => {
+            if (event.data === "gmail-auth-success") {
+                console.log("📩 Đã nhận gmail-auth-success từ popup");
+    
+                try {
+                    const res = await fetch("/gmail/current_user_info", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-Requested-With": "XMLHttpRequest",
+                        },
+                        body: JSON.stringify({
+                            jsonrpc: "2.0",
+                            method: "call",
+                            params: {},
+                        }),
+                    });
+    
+                    const json = await res.json();
+                    console.log("📬 Gmail current_user_info:", json);
+    
+                    if (json.result?.status === "success" && typeof json.result.email === "string") {
+                        const email = json.result.email;
+                    
+                        const exists = this.state.accounts.some((acc) => acc.email === email);
+                        if (!exists) {
+                            const newId = Date.now() + Math.floor(Math.random() * 1000);
+                            const newAccount = {
+                                id: newId,
+                                email,
+                                name: email.split("@")[0],
+                                initial: email[0].toUpperCase(),
+                                status: "active",
+                                messages: [],
+                                selectedMessage: null,
+                                currentThread: [],
+                            };
+                            console.log("✅ Thêm tài khoản mới:", newAccount);
+                            this.state.accounts.push(newAccount);
+                            this.state.activeTabId = newId;
+                            this.loadMessages(email);
+                            // ✅ Lưu lại danh sách tài khoản vào localStorage
+                            localStorage.setItem("gmail_accounts", JSON.stringify(this.state.accounts));
+                        } else {
+                            const existing = this.state.accounts.find((acc) => acc.email === email);
+                            this.state.activeTabId = existing.id;
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error("❌ Lỗi khi lấy current_user_info:", error);
+                }
+    
+                window.removeEventListener("message", handleMessage);
+            }
+        };
+    
+        window.addEventListener("message", handleMessage);
+    }
+    
+    _switchTab = (accountId) => {
+        this.state.activeTabId = accountId;
+        const acc = this.state.accounts.find((a) => a.id === accountId);
+        if (acc) {
+            this.loadMessages(acc.email);
+        }
+    };
+    
+
+    closeTab = (accountId) => {
+        const index = this.state.accounts.findIndex(acc => acc.id === accountId);
+        if (index !== -1) {
+            this.state.accounts.splice(index, 1);
+    
+            // Cập nhật tab đang active nếu tab vừa xóa là tab đang xem
+            if (this.state.activeTabId === accountId) {
+                this.state.activeTabId = this.state.accounts[0]?.id || null;
+                if (this.state.activeTabId) {
+                    const acc = this.state.accounts.find(a => a.id === this.state.activeTabId);
+                    if (acc) {
+                        this.loadMessages(acc.email);
+                    }
+                } else {
+                    this.state.messages = []; // Clear UI
+                }
+            }
+    
+            // ✅ Cập nhật localStorage sau khi xóa
+            localStorage.setItem("gmail_accounts", JSON.stringify(this.state.accounts));
+        }
+    };
+    
+    
 }
 
 GmailInbox.template = template;
