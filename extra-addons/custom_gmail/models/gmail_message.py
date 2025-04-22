@@ -14,15 +14,14 @@ class GmailMessage(models.Model):
     email_sender = fields.Char(string="Email Sender")
     email_receiver = fields.Char(string="Email Receiver")
     email_cc = fields.Char(string="Email CC")
-    last_fetched_email_id = fields.Char(
-        string="Last Fetched Email ID",
-        help="Stores the last fetched Gmail ID to optimize fetching new emails.",
+    last_fetched_email_id = fields.Char(string="Last Fetched Email ID")
+    thread_id = fields.Char(string="Thread ID")
+    message_id = fields.Char(string="Message ID")
+
+    gmail_account_id = fields.Many2one(
+        "gmail.account", string="Gmail Account", index=True
     )
-    thread_id = fields.Char(
-        string="Thread ID",
-        help="Stores the thread ID of the email conversation.",
-    )
-    message_id = fields.Char(
-        string="Message ID",
-        help="Stores the message ID of the email.",
-    )
+
+    _sql_constraints = [
+        ("unique_gmail_id", "unique(gmail_id)", "Gmail ID must be unique!")
+    ]

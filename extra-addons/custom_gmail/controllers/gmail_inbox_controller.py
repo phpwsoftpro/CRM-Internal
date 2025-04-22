@@ -13,32 +13,28 @@ from email.header import Header
 
 
 class GmailInboxController(http.Controller):
-
     @http.route("/gmail/messages", type="json", auth="user", csrf=False)
-    def get_gmail_messages(self):
+    def get_gmail_messages(self, **kwargs):
         """
-        API lấy danh sách email từ mail.message đã fetch từ Gmail API,
-        bao gồm attachment và xử lý HTML.
+        API lấy danh sách email theo từng tài khoản (qua email), đã fetch từ Gmail API.
         """
-        user_partner_id = request.env.user.partner_id.id
+        email = kwargs.get("email")
+        domain = [
+            ("message_type", "=", "email"),
+            ("is_gmail", "=", True),
+        ]
+        if email:
+            domain.append(("email_receiver", "ilike", email))
+
         messages = (
             request.env["mail.message"]
             .sudo()
-            .search(
-                [
-                    ("message_type", "=", "email"),
-                    ("author_id", "=", user_partner_id),
-                    ("is_gmail", "=", True),
-                ],
-                order="date_received desc",
-                limit=1000,
-            )
+            .search(domain, order="date_received desc", limit=1000)
         )
 
         result = []
         for msg in messages:
-            full_body = msg.body or "No Content"  # Giữ nguyên HTML gốc
-
+            full_body = msg.body or "No Content"
             attachments = (
                 request.env["ir.attachment"]
                 .sudo()
@@ -54,8 +50,8 @@ class GmailInboxController(http.Controller):
                 {
                     "id": att.id,
                     "name": att.name,
-                    "url": f"/web/content/{att.id}",  # ✅ cho preview
-                    "download_url": f"/web/content/{att.id}?download=true",  # tùy chọn
+                    "url": f"/web/content/{att.id}",
+                    "download_url": f"/web/content/{att.id}?download=true",
                     "mimetype": att.mimetype,
                 }
                 for att in attachments
@@ -72,7 +68,7 @@ class GmailInboxController(http.Controller):
                         if msg.date_received
                         else ""
                     ),
-                    "body": full_body,  # Dùng body HTML gốc
+                    "body": full_body,
                     "attachments": attachment_list,
                     "thread_id": msg.thread_id or "",
                     "message_id": msg.message_id or "",
@@ -80,6 +76,49 @@ class GmailInboxController(http.Controller):
             )
 
         return result
+
+    @http.route("/gmail/current_user_info", type="json", auth="user")
+    def current_user_info(self, **kwargs):
+        accounts = (
+            request.env["gmail.account"]
+            .sudo()
+            .search(
+                [("user_id", "=", request.env.user.id)],
+                order="write_date desc",
+                limit=1,
+            )
+        )  # ⚠️ lấy tài khoản mới nhất
+
+        if not accounts:
+            return {
+                "status": "error",
+                "message": "No Gmail accounts found",
+            }
+
+        return {
+            "status": "success",
+            "email": accounts.email,  # ✅ trả về duy nhất 1 email
+        }
+
+    @http.route("/gmail/account_id_by_email", type="json", auth="user")
+    def get_account_id(self, email):
+        account = (
+            request.env["gmail.account"]
+            .sudo()
+            .search(
+                [
+                    ("gmail_email", "=", email),
+                    ("user_id", "=", request.env.user.id),
+                ],
+                limit=1,
+            )
+        )
+        return {"account_id": account.id if account else False}
+
+    @http.route("/gmail/sync_account", type="json", auth="user")
+    def sync_gmail_by_account(self, account_id):
+        request.env["mail.message"].sudo().fetch_gmail_for_account(account_id)
+        return {"status": "ok"}
 
 
 class UploadController(http.Controller):
@@ -109,7 +148,14 @@ def extract_email_only(email_str):
 
 
 def send_email_with_gmail_api(
-    access_token, sender_email, to_email, subject, html_content, thread_id=None, message_id=None, headers=None
+    access_token,
+    sender_email,
+    to_email,
+    subject,
+    html_content,
+    thread_id=None,
+    message_id=None,
+    headers=None,
 ):
     message = MIMEMultipart("alternative")
     message["Subject"] = str(Header(subject, "utf-8"))
@@ -139,11 +185,13 @@ def send_email_with_gmail_api(
 
     body = {"raw": raw_message}
     if thread_id:
-        body["threadId"] = thread_id,
-
+        body["threadId"] = (thread_id,)
 
     response = requests.post(url, headers=api_headers, json=body)
-    _logger.info("📬 Gmail API Response xem Message Id: %s", json.dumps(response.json(), indent=2))
+    _logger.info(
+        "📬 Gmail API Response xem Message Id: %s",
+        json.dumps(response.json(), indent=2),
+    )
     if response.status_code in [200, 202]:
         resp_data = response.json()
         return {
@@ -159,7 +207,6 @@ def send_email_with_gmail_api(
             "code": response.status_code,
             "message": response.text,
         }
-
 
 
 class MailAPIController(http.Controller):
@@ -185,7 +232,7 @@ class MailAPIController(http.Controller):
         to = extract_email_only(data.get("to", ""))
         subject = data.get("subject")
         body_html = data.get("body_html")
-        thread_id = data.get("thread_id") 
+        thread_id = data.get("thread_id")
         message_id = data.get("message_id")
         if not to or not subject or not body_html:
             _logger.warning(
@@ -215,11 +262,17 @@ class MailAPIController(http.Controller):
 
         # ✅ Truyền thread_id nếu có
         result = send_email_with_gmail_api(
-            access_token, sender_email, to, subject, body_html, thread_id, message_id,
+            access_token,
+            sender_email,
+            to,
+            subject,
+            body_html,
+            thread_id,
+            message_id,
             headers={
                 "In-Reply-To": f"<{message_id}>",
                 "References": f"<{message_id}>",
-            }
+            },
         )
         _logger.info("📤 Gmail API response: %s", result)
         return request.make_json_response(result)
