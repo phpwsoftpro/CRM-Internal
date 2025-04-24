@@ -77,39 +77,6 @@ class GmailFetch(models.Model):
             "target": "new",
         }
 
-    # @api.model
-    # def fetch_gmail_messages(self, access_token):
-    #     _logger.info("▶️ Bắt đầu fetch Gmail messages...")
-
-    #     headers = {"Authorization": f"Bearer {access_token}"}
-    #     base_url = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
-    #     max_messages = 15
-    #     fetched_count = 0
-    #     next_page_token = None
-    #     thirty_days_ago = fields.Datetime.to_string(datetime.now() - timedelta(days=30))
-    #     existing_gmail_ids = set(
-    #         self.search([("create_date", ">=", thirty_days_ago)]).mapped("gmail_id")
-    #     )
-
-    # def extract_all_html_parts(payload):
-    #     html_parts = []
-
-    #     def recurse(part):
-    #         mime_type = part.get("mimeType")
-    #         body_data = part.get("body", {}).get("data")
-    #         if mime_type == "text/html" and body_data:
-    #             try:
-    #                 html_parts.append(
-    #                     base64.urlsafe_b64decode(body_data + "==").decode("utf-8")
-    #                 )
-    #             except Exception as e:
-    #                 _logger.warning("❌ Decode HTML failed: %s", e)
-    #         for sub in part.get("parts", []):
-    #             recurse(sub)
-
-    #     recurse(payload)
-    #     return "\n".join(html_parts) if html_parts else ""
-
     def save_attachments(self, payload, gmail_msg_id, res_id, headers):
         saved_attachments = []
 
