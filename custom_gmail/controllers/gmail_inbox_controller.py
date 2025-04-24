@@ -97,7 +97,7 @@ class GmailInboxController(http.Controller):
 
         return {
             "status": "success",
-            "email": accounts.email,  # ✅ trả về duy nhất 1 email
+            "email": accounts[0].email,
         }
 
     @http.route("/gmail/account_id_by_email", type="json", auth="user")
@@ -107,7 +107,7 @@ class GmailInboxController(http.Controller):
             .sudo()
             .search(
                 [
-                    ("gmail_email", "=", email),
+                    ("email", "=", email),
                     ("user_id", "=", request.env.user.id),
                 ],
                 limit=1,
@@ -119,6 +119,71 @@ class GmailInboxController(http.Controller):
     def sync_gmail_by_account(self, account_id):
         request.env["mail.message"].sudo().fetch_gmail_for_account(account_id)
         return {"status": "ok"}
+
+    @http.route("/gmail/save_account", type="json", auth="user", csrf=False)
+    def save_gmail_account(self, email, **kwargs):
+        user_id = request.env.user.id
+        GmailAccount = request.env["gmail.account"].sudo()
+
+        # Tránh lưu trùng
+        existing = GmailAccount.search(
+            [
+                ("email", "=", email),
+                ("user_id", "=", user_id),
+            ],
+            limit=1,
+        )
+
+        if not existing:
+            GmailAccount.create(
+                {
+                    "user_id": user_id,
+                    "email": email,
+                }
+            )
+
+        return {"status": "saved"}
+
+    @http.route("/gmail/my_accounts", type="json", auth="user")
+    def my_gmail_accounts(self):
+        accounts = (
+            request.env["gmail.account"]
+            .sudo()
+            .search(
+                [
+                    ("user_id", "=", request.env.user.id),
+                ]
+            )
+        )
+        return [
+            {
+                "id": acc.id,
+                "email": acc.email,
+                "name": (acc.email or "").split("@")[0] if acc.email else "Unknown",
+                "initial": (acc.email or "X")[0].upper(),
+                "status": "active",
+            }
+            for acc in accounts
+        ]
+
+    @http.route("/gmail/delete_account", type="json", auth="user", csrf=False)
+    def delete_account(self, account_id):
+        account = (
+            request.env["gmail.account"]
+            .sudo()
+            .search(
+                [
+                    ("id", "=", account_id),
+                    ("user_id", "=", request.env.user.id),
+                ],
+                limit=1,
+            )
+        )
+
+        if account:
+            account.unlink()
+            return {"status": "deleted"}
+        return {"status": "not_found"}
 
 
 class UploadController(http.Controller):
