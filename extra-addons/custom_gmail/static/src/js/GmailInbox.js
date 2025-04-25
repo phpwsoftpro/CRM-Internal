@@ -1,5 +1,4 @@
 /** @odoo-module **/
-
 import { Component, onMounted } from "@odoo/owl";
 import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
@@ -25,6 +24,10 @@ import {
     toggleThreadMessage,
 } from "./uiUtils";
 
+async function getCurrentUserId() {
+    const result = await rpc("/web/session/get_session_info");
+    return result.uid;
+}
 export class GmailInbox extends Component {
     setup() {
         this.state = initialState();
@@ -55,7 +58,15 @@ export class GmailInbox extends Component {
         this.addGmailAccount = this._addGmailAccount;
         this.switchTab = this._switchTab.bind(this);
         this.state.messagesByEmail = {};
-    
+        this.state.currentPage = 1;
+        this.state.pageSize = 15;
+        this.state.pagination = {
+            email: "",
+            pageToken: null,
+            nextPageToken: null,
+            previousPageToken: null,
+            messages: [],
+        };
         // 👇 Khôi phục các tab tài khoản đã lưu trong localStorage
         const savedAccounts = localStorage.getItem("gmail_accounts");
         if (savedAccounts) {
@@ -65,35 +76,57 @@ export class GmailInbox extends Component {
                 this.loadMessages(this.state.accounts[0].email);
             }
         }
-        onMounted(() => {
-            this.loadMessages();
+        onMounted(async () => {
+            const currentUserId = await getCurrentUserId();
+        
+            // Ưu tiên lấy từ DB
+            const dbAccounts = await rpc("/gmail/my_accounts");
+            if (dbAccounts.length > 0) {
+                this.state.accounts = dbAccounts;
+                this.state.activeTabId = dbAccounts[0].id;
+                this.loadMessages(dbAccounts[0].email);
+            } else {
+                // Nếu DB không có → lấy từ localStorage theo user
+                const savedAccounts = localStorage.getItem(`gmail_accounts_user_${currentUserId}`);
+                if (savedAccounts) {
+                    this.state.accounts = JSON.parse(savedAccounts);
+                    if (this.state.accounts.length > 0) {
+                        this.state.activeTabId = this.state.accounts[0].id;
+                        this.loadMessages(this.state.accounts[0].email);
+                    }
+                }
+            }
+        
             this.loadAuthenticatedEmail();
-            this.state.selectedAccount = this.state.accounts[0];
         });
+        
+        
+        
     }
     
-    async loadMessages(email) {
-        // Clear UI cũ
-        this.state.messages = [];
-    
-        // Nếu đã có cache và muốn dùng lại (tuỳ chọn)
-        if (this.state.messagesByEmail[email]) {
-            this.state.messages = this.state.messagesByEmail[email];
-            return;
-        }
-    
-        // Gọi API lấy 15 email mới nhất
-        const messages = await rpc("/gmail/messages", {
-            email: email,
+    async loadMessages(email, pageToken = null) {
+        this.state.loading = true;
+        const result = await rpc("/gmail/messages", {
+            email,
+            page_token: pageToken,
         });
     
-        // Lưu cache và cập nhật UI
-        this.state.messagesByEmail[email] = messages;
-        this.state.messages = messages;
+        this.state.pagination = {
+            email,
+            pageToken,
+            messages: result.messages || [],
+            nextPageToken: result.next_page_token || null,
+            previousPageToken: result.previous_page_token || null,
+            startIndex: result.start_index || 0,
+            total: result.total || 0,
+        };
+        this.state.loading = false
     }
     
+    
+    
 
-
+    
     async loadAuthenticatedEmail() {
         try {
             const result = await rpc("/gmail/user_email", {});
@@ -145,6 +178,7 @@ export class GmailInbox extends Component {
     }
 
     _addGmailAccount = async () => {
+        const currentUserId = await getCurrentUserId();
         const popup = window.open("", "_blank", "width=700,height=800");
         popup.location.href = "/gmail/auth/start";
     
@@ -176,7 +210,7 @@ export class GmailInbox extends Component {
     
                     if (json.result?.status === "success" && typeof json.result.email === "string") {
                         const email = json.result.email;
-                    
+    
                         const exists = this.state.accounts.some((acc) => acc.email === email);
                         if (!exists) {
                             const newId = Date.now() + Math.floor(Math.random() * 1000);
@@ -190,18 +224,21 @@ export class GmailInbox extends Component {
                                 selectedMessage: null,
                                 currentThread: [],
                             };
-                            console.log("✅ Thêm tài khoản mới:", newAccount);
                             this.state.accounts.push(newAccount);
                             this.state.activeTabId = newId;
                             this.loadMessages(email);
-                            // ✅ Lưu lại danh sách tài khoản vào localStorage
-                            localStorage.setItem("gmail_accounts", JSON.stringify(this.state.accounts));
+    
+                            // ✅ Lưu localStorage theo user
+                            localStorage.setItem(
+                                `gmail_accounts_user_${currentUserId}`,
+                                JSON.stringify(this.state.accounts)
+                            );
                         } else {
                             const existing = this.state.accounts.find((acc) => acc.email === email);
                             this.state.activeTabId = existing.id;
                         }
                     }
-                    
+    
                 } catch (error) {
                     console.error("❌ Lỗi khi lấy current_user_info:", error);
                 }
@@ -211,7 +248,9 @@ export class GmailInbox extends Component {
         };
     
         window.addEventListener("message", handleMessage);
-    }
+    };
+    
+    
     
     _switchTab = (accountId) => {
         this.state.activeTabId = accountId;
@@ -222,12 +261,17 @@ export class GmailInbox extends Component {
     };
     
 
-    closeTab = (accountId) => {
+    closeTab = async (accountId) => {
+        const currentUserId = await getCurrentUserId();
+    
+        await rpc("/gmail/delete_account", {
+            account_id: accountId,
+        });
+    
         const index = this.state.accounts.findIndex(acc => acc.id === accountId);
         if (index !== -1) {
             this.state.accounts.splice(index, 1);
     
-            // Cập nhật tab đang active nếu tab vừa xóa là tab đang xem
             if (this.state.activeTabId === accountId) {
                 this.state.activeTabId = this.state.accounts[0]?.id || null;
                 if (this.state.activeTabId) {
@@ -236,14 +280,59 @@ export class GmailInbox extends Component {
                         this.loadMessages(acc.email);
                     }
                 } else {
-                    this.state.messages = []; // Clear UI
+                    this.state.messages = [];
                 }
             }
     
-            // ✅ Cập nhật localStorage sau khi xóa
-            localStorage.setItem("gmail_accounts", JSON.stringify(this.state.accounts));
+            // ✅ Cập nhật localStorage theo user
+            localStorage.setItem(
+                `gmail_accounts_user_${currentUserId}`,
+                JSON.stringify(this.state.accounts)
+            );
         }
     };
+    
+    getPaginatedMessages(email) {
+        return this.state.pagination.messages || [];
+    }
+    
+    
+    getPaginationInfo(email) {
+        const { startIndex, messages, total } = this.state.pagination;
+        const start = (startIndex || 0) + 1;
+        const end = start + (messages?.length || 0) - 1;
+    
+        return { start, end, total };
+    }
+    
+    
+    
+    nextPage() {
+        const email = this.getActiveEmail();
+        const nextToken = this.state.pagination.nextPageToken;
+        if (nextToken) {
+            this.loadMessages(email, nextToken);
+        }
+    }
+    
+    prevPage() {
+        const email = this.getActiveEmail();
+        const prevToken = this.state.pagination.previousPageToken;
+        if (prevToken) {
+            this.loadMessages(email, prevToken);
+        }
+    }
+    
+    
+    getActiveEmail() {
+        const activeAccount = this.state.accounts.find(acc => acc.id === this.state.activeTabId);
+        return activeAccount ? activeAccount.email : "";
+    }
+    prevPageToken() {
+        const token = parseInt(this.state.pagination.pageToken || 0);
+        return Math.max(token - 15, 0);
+    } 
+    
     
     
 }
