@@ -211,68 +211,70 @@ def send_email_with_gmail_api(
 
 class MailAPIController(http.Controller):
 
+    @http.route("/mail/messages", type="json", auth="user")
+    def get_mail_messages(self, provider, **kwargs):
+        domain = [("message_type", "=", "email")]
+        if provider == "gmail":
+            domain.append(("is_gmail", "=", True))
+        elif provider == "outlook":
+            domain.append(("is_outlook", "=", True))
+
+        messages = (
+            request.env["mail.message"]
+            .sudo()
+            .search(domain, order="date_received desc", limit=1000)
+        )
+
+        result = [
+            {
+                "id": msg.id,
+                "subject": msg.subject or "No Subject",
+                "sender": msg.email_sender or "Unknown",
+                "receiver": msg.email_receiver or "Unknown",
+                "date_received": (
+                    msg.date_received.strftime("%Y-%m-%d %H:%M:%S")
+                    if msg.date_received
+                    else ""
+                ),
+            }
+            for msg in messages
+        ]
+
+        return result
+
     @http.route(
         "/api/send_email", type="http", auth="user", csrf=False, methods=["POST"]
     )
     def send_email(self, **kwargs):
-        headers = dict(request.httprequest.headers)
-        raw_data = request.httprequest.get_data(as_text=True)
-        _logger.info("Headers: %s", headers)
-        _logger.info("Raw Data: %s", raw_data)
-
-        try:
-            data = json.loads(raw_data)
-            _logger.info("Parsed JSON: %s", data)
-        except json.JSONDecodeError as e:
-            _logger.error("Invalid JSON received: %s", e)
-            return request.make_json_response(
-                {"status": "error", "message": "Invalid JSON"}, status=400
-            )
-
-        to = extract_email_only(data.get("to", ""))
+        data = json.loads(request.httprequest.get_data(as_text=True))
+        provider = data.get("provider")
+        to = data.get("to")
         subject = data.get("subject")
         body_html = data.get("body_html")
-        thread_id = data.get("thread_id")
-        message_id = data.get("message_id")
-        if not to or not subject or not body_html:
-            _logger.warning(
-                "Missing fields: to=%s, subject=%s, body_html=%s",
-                to,
-                subject,
-                body_html,
-            )
-            return request.make_json_response(
-                {"status": "error", "message": "Missing required fields"}, status=400
-            )
 
-        access_token = (
-            request.env["ir.config_parameter"].sudo().get_param("gmail_access_token")
-        )
-        sender_email = (
-            request.env["ir.config_parameter"]
+        account = (
+            request.env["gmail.account"]
             .sudo()
-            .get_param("gmail_authenticated_email")
+            .search(
+                [("user_id", "=", request.env.user.id), ("provider", "=", provider)],
+                limit=1,
+            )
         )
 
-        if not access_token or not sender_email:
-            _logger.error("Gmail token or authenticated email missing.")
+        if not account:
             return request.make_json_response(
-                {"status": "error", "message": "No Gmail token available"}, status=400
+                {"status": "error", "message": "No linked account"}, status=400
             )
 
-        # ✅ Truyền thread_id nếu có
-        result = send_email_with_gmail_api(
-            access_token,
-            sender_email,
-            to,
-            subject,
-            body_html,
-            thread_id,
-            message_id,
-            headers={
-                "In-Reply-To": f"<{message_id}>",
-                "References": f"<{message_id}>",
-            },
-        )
-        _logger.info("📤 Gmail API response: %s", result)
+        if provider == "gmail":
+            result = send_email_with_gmail_api(
+                account.access_token, account.email, to, subject, body_html
+            )
+        elif provider == "outlook":
+            result = send_email_with_outlook_api(
+                account.access_token, account.email, to, subject, body_html
+            )
+        else:
+            result = {"status": "error", "message": "Invalid provider"}
+
         return request.make_json_response(result)
