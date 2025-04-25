@@ -16,9 +16,18 @@ class GmailInboxController(http.Controller):
     @http.route("/gmail/messages", type="json", auth="user", csrf=False)
     def get_gmail_messages(self, **kwargs):
         """
-        API lấy danh sách email theo từng tài khoản (qua email), đã fetch từ Gmail API.
+        API lấy danh sách email theo từng tài khoản (qua email), hỗ trợ phân trang giống Gmail.
         """
         email = kwargs.get("email")
+        page_token = kwargs.get("page_token")
+
+        try:
+            offset = int(page_token or 0)
+        except ValueError:
+            offset = 0
+
+        limit = 15
+
         domain = [
             ("message_type", "=", "email"),
             ("is_gmail", "=", True),
@@ -26,26 +35,23 @@ class GmailInboxController(http.Controller):
         if email:
             domain.append(("email_receiver", "ilike", email))
 
-        messages = (
-            request.env["mail.message"]
-            .sudo()
-            .search(domain, order="date_received desc", limit=1000)
+        Message = request.env["mail.message"].sudo()
+
+        # 👉 Tính tổng số thư
+        total = Message.search_count(domain)
+
+        # 👉 Lấy dữ liệu trang hiện tại + 1 dòng để kiểm tra next
+        messages = Message.search(
+            domain, order="date_received desc", limit=limit + 1, offset=offset
         )
 
         result = []
-        for msg in messages:
-            full_body = msg.body or "No Content"
+        for msg in messages[:limit]:
             attachments = (
                 request.env["ir.attachment"]
                 .sudo()
-                .search(
-                    [
-                        ("res_model", "=", "mail.message"),
-                        ("res_id", "=", msg.id),
-                    ]
-                )
+                .search([("res_model", "=", "mail.message"), ("res_id", "=", msg.id)])
             )
-
             attachment_list = [
                 {
                     "id": att.id,
@@ -56,7 +62,6 @@ class GmailInboxController(http.Controller):
                 }
                 for att in attachments
             ]
-
             result.append(
                 {
                     "id": msg.id,
@@ -68,14 +73,24 @@ class GmailInboxController(http.Controller):
                         if msg.date_received
                         else ""
                     ),
-                    "body": full_body,
+                    "body": msg.body or "No Content",
                     "attachments": attachment_list,
                     "thread_id": msg.thread_id or "",
                     "message_id": msg.message_id or "",
                 }
             )
 
-        return result
+        # 👉 Tính next và previous token
+        next_page_token = str(offset + limit) if len(messages) > limit else None
+        previous_page_token = str(max(offset - limit, 0)) if offset > 0 else None
+
+        return {
+            "messages": result,
+            "next_page_token": next_page_token,
+            "previous_page_token": previous_page_token,
+            "start_index": offset,
+            "total": total,
+        }
 
     @http.route("/gmail/current_user_info", type="json", auth="user")
     def current_user_info(self, **kwargs):
