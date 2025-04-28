@@ -331,7 +331,7 @@ class MailAPIController(http.Controller):
         sender_email = (
             request.env["ir.config_parameter"]
             .sudo()
-            .get_param("gmail_authenticated_email")
+            .get_param("gmail_authenticated_email") 
         )
 
         if not access_token or not sender_email:
