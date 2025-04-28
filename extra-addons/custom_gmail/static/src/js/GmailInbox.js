@@ -58,15 +58,7 @@ export class GmailInbox extends Component {
         this.addGmailAccount = this._addGmailAccount;
         this.switchTab = this._switchTab.bind(this);
         this.state.messagesByEmail = {};
-        this.state.currentPage = 1;
-        this.state.pageSize = 15;
-        this.state.pagination = {
-            email: "",
-            pageToken: null,
-            nextPageToken: null,
-            previousPageToken: null,
-            messages: [],
-        };
+    
         // 👇 Khôi phục các tab tài khoản đã lưu trong localStorage
         const savedAccounts = localStorage.getItem("gmail_accounts");
         if (savedAccounts) {
@@ -104,26 +96,25 @@ export class GmailInbox extends Component {
         
     }
     
-    async loadMessages(email, pageToken = null) {
-        this.state.loading = true;
-        const result = await rpc("/gmail/messages", {
-            email,
-            page_token: pageToken,
+    async loadMessages(email) {
+        // Clear UI cũ
+        this.state.messages = [];
+    
+        // Nếu đã có cache và muốn dùng lại (tuỳ chọn)
+        if (this.state.messagesByEmail[email]) {
+            this.state.messages = this.state.messagesByEmail[email];
+            return;
+        }
+    
+        // Gọi API lấy 15 email mới nhất
+        const messages = await rpc("/gmail/messages", {
+            email: email,
         });
     
-        this.state.pagination = {
-            email,
-            pageToken,
-            messages: result.messages || [],
-            nextPageToken: result.next_page_token || null,
-            previousPageToken: result.previous_page_token || null,
-            startIndex: result.start_index || 0,
-            total: result.total || 0,
-        };
-        this.state.loading = false
+        // Lưu cache và cập nhật UI
+        this.state.messagesByEmail[email] = messages;
+        this.state.messages = messages;
     }
-    
-    
     
 
     
@@ -292,46 +283,7 @@ export class GmailInbox extends Component {
         }
     };
     
-    getPaginatedMessages(email) {
-        return this.state.pagination.messages || [];
-    }
     
-    
-    getPaginationInfo(email) {
-        const { startIndex, messages, total } = this.state.pagination;
-        const start = (startIndex || 0) + 1;
-        const end = start + (messages?.length || 0) - 1;
-    
-        return { start, end, total };
-    }
-    
-    
-    
-    nextPage() {
-        const email = this.getActiveEmail();
-        const nextToken = this.state.pagination.nextPageToken;
-        if (nextToken) {
-            this.loadMessages(email, nextToken);
-        }
-    }
-    
-    prevPage() {
-        const email = this.getActiveEmail();
-        const prevToken = this.state.pagination.previousPageToken;
-        if (prevToken) {
-            this.loadMessages(email, prevToken);
-        }
-    }
-    
-    
-    getActiveEmail() {
-        const activeAccount = this.state.accounts.find(acc => acc.id === this.state.activeTabId);
-        return activeAccount ? activeAccount.email : "";
-    }
-    prevPageToken() {
-        const token = parseInt(this.state.pagination.pageToken || 0);
-        return Math.max(token - 15, 0);
-    } 
     
     
     

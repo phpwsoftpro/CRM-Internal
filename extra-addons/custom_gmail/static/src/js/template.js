@@ -89,7 +89,6 @@ export default xml`
             <div class="gmail-header">
                 <!-- Filters & Actions -->
                 <div class="header-actions">
-                <div class="header-left-group" style="display: flex; align-items: center; gap: 8px;">
                     <div class="email-checkbox-all"> <input type="checkbox" id="selectAll" t-on-click="toggleSelectAll" style="cursor: pointer;"/></div>
                     <div class="dropdown-caret">
                         <button class="dropdown-icon" t-on-click="toggleDropdown">
@@ -104,7 +103,7 @@ export default xml`
                             <li t-on-click="() => this.selectFilter('unstarred')">Unstarred</li>
                         </ul>
                     </div>
-    
+
                     <button class="icon-btn-reload" t-on-click="onRefresh">
                         <i class="fa fa-refresh"></i>
                     </button>
@@ -120,31 +119,6 @@ export default xml`
                         <div class="dropdown-item disabled">
                             <em>Select messages to see more actions</em>
                         </div>
-                    </div>
-                    </div>
-                    <div class="pagination-controls toolbar-pagination" style="display: flex; align-items: center; gap: 8px;padding-left: 30px;">
-                        <t t-set="pagination" t-value="getPaginationInfo(getActiveEmail())"/>
-                        <span class="pagination-info">
-                            <t t-esc="pagination.start"/>–<t t-esc="pagination.end"/> of <t t-esc="pagination.total"/>
-                        </span>
-
-                        <button
-                            t-on-click="prevPage"
-                            t-att-disabled="!state.pagination[getActiveEmail()]?.previousPageToken"
-                            class="pagination-btn"
-                            title="Previous page"
-                        >
-                            <i class="fa fa-chevron-left"></i>
-                        </button>
-
-                        <button
-                            t-on-click="nextPage"
-                            t-att-disabled="!state.pagination[getActiveEmail()]?.nextPageToken"
-                            class="pagination-btn"
-                            title="Next page"
-                        >
-                            <i class="fa fa-chevron-right"></i>
-                        </button>
                     </div>
                 </div>
 
@@ -172,14 +146,8 @@ export default xml`
                                     <div class="email-list">
                                         <t t-set="activeAccount" t-value="state.accounts.find(acc => acc.id === state.activeTabId)"/>
                                         <t t-set="activeEmail" t-value="activeAccount ? activeAccount.email : ''"/>
-                                        <t t-set="activeMessages" t-value="getPaginatedMessages(activeEmail)"/>
-                                        <t t-set="pagination" t-value="getPaginationInfo(activeEmail)"/>
-                                        <t t-set="messages" t-value="state.pagination.messages"/>
-                                        <t t-if="state.loading">
-                                            <div class="loading-state">
-                                                <i class="fa fa-spinner fa-spin"></i> Đang tải thư...
-                                            </div>
-                                        </t>
+                                        <t t-set="activeMessages" t-value="(state.messagesByEmail[activeEmail]) or []"/>
+
                                         <t t-foreach="activeMessages" t-as="msg" t-key="msg.id">
                                             <div class="email-item"
                                                 t-att-class="msg.unread ? 'email-row unread' : 'email-row'"
@@ -214,9 +182,7 @@ export default xml`
                                                 </div>
                                             </div>
                                         </t>
-
                                     </div>
-
 
                                     <div class="email-detail">
                                         <t t-if="state.selectedMessage">
