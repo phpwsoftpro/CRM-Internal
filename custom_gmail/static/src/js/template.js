@@ -122,28 +122,32 @@ export default xml`
                     </div>
                 </div>
 
-                <!-- Tabs -->
+               <!-- Tabs -->
                 <div class="gmail-tabs">
+                    <!-- Các tab account đang có -->
                     <t t-foreach="state.accounts" t-as="acc" t-key="acc.id">
-                        <div class="tab" t-att-class="acc.id === state.activeTabId ? 'tab active' : 'tab'" t-att-data-email="acc.email"
+                        <div class="tab" t-att-class="acc.id === state.activeTabId ? 'tab active' : 'tab'" 
+                            t-att-data-email="acc.email"
                             t-on-click="() => this.switchTab(acc.id)">
-                            <i class="fa fa-inbox"></i> <t t-esc="acc.email"/>
+                            <i class="fa fa-inbox"></i> 
+                            <t t-esc="acc.email"/>
                             <i class="fa fa-times close-tab"
-                                title="Đóng"
-                                style="margin-left: 8px; cursor: pointer;"
-                                t-on-click.stop="() => this.closeTab(acc.id)"></i>
+                            title="Đóng"
+                            style="margin-left: 8px; cursor: pointer;"
+                            t-on-click.stop="() => this.closeTab(acc.id)"></i>
                         </div>
                     </t>
 
-                    <!-- Thay add-tab bằng login-tab -->
-                   <div class="tab login-tab" t-on-click="() => this.startOAuth('gmail')">
+                    <!-- Nút login Gmail -->
+                    <div class="tab login-tab" t-on-click="() => this.addGmailAccount()">
                         <img src="/custom_gmail/static/src/img/gmail_1.svg" alt="Gmail" class="icon-svg"/>
                     </div>
-                    <div class="tab login-tab" t-on-click="() => this.startOAuth('outlook')">
+
+                    <!-- Nút login Outlook -->
+                    <div class="tab login-tab" t-on-click="() => this.addOutlookAccount()">
                         <img src="/custom_gmail/static/src/img/outlook.svg" alt="Outlook" class="icon-svg"/>
                     </div>
                 </div>
-
                     <div class="tab-content">
                             <div class="gmail-content" >
                                 <div class="content-container">

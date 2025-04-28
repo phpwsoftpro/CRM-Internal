@@ -1,95 +1,77 @@
 import logging
-import requests
-import msal
+import werkzeug
 from odoo import http
 from odoo.http import request
+import msal
+import urllib.parse
 
 _logger = logging.getLogger(__name__)
 
 
 class OutlookAuthController(http.Controller):
 
+    @http.route("/outlook/auth/start", type="http", auth="user", methods=["GET"])
+    def outlook_auth_start(self, **kw):
+
+        _logger.info("🔐 Outlook OAuth flow started from /outlook/auth/start")
+
+        # Gọi config từ model outlook.mail.sync
+
+        config = request.env["outlook.mail.sync"].sudo().get_outlook_config()
+
+        scope = "https://graph.microsoft.com/Mail.Read offline_access"
+
+        params = {
+            "client_id": config["client_id"],
+            "response_type": "code",
+            "redirect_uri": config["redirect_uri"],
+            "response_mode": "query",
+            "scope": scope,
+            "prompt": "select_account",
+        }
+
+        auth_url = f"https://login.microsoftonline.com/{config['tenant_id']}/oauth2/v2.0/authorize?{urllib.parse.urlencode(params)}"
+
+        _logger.info(f"🔗 Redirecting to Outlook OAuth URL: {auth_url}")
+
+        return werkzeug.utils.redirect(auth_url)
+
     @http.route("/odoo/outlook/auth/callback", type="http", auth="user")
     def outlook_callback(self, **kw):
         _logger.info("Received OAuth callback from Outlook")
 
         code = kw.get("code")
+        state = kw.get("state")
         error = kw.get("error")
 
         if error:
             _logger.error(f"OAuth error: {error}")
-            return "<h3>❌ Authentication failed. Please try again.</h3>"
+            return "Authentication failed. Please try again."
 
         if not code:
-            return "<h3>❌ No authentication code received.</h3>"
+            _logger.warning("No code received from Outlook.")
+            return "No authentication code received."
 
-        config = request.env["outlook.mail.sync"].sudo().get_outlook_config()
+        try:
+            user = request.env.user.sudo()  # dùng sudo để tránh lỗi nếu không đủ quyền
+            user.write(
+                {
+                    "outlook_auth_code": code,
+                    "outlook_auth_state": state,
+                }
+            )
+            _logger.info(f"Saved Outlook auth code for user {user.id}")
 
-        token_url = config["token_uri"]
-        data = {
-            "client_id": config["client_id"],
-            "client_secret": config["client_secret"],
-            "code": code,
-            "redirect_uri": config["redirect_uri"],
-            "grant_type": "authorization_code",
-        }
+            # Sync ngay sau khi đăng nhập
+            success = request.env["outlook.mail.sync"].sudo().create_sync_job(user.id)
+            if not success:
+                return "Authentication succeeded, but email sync failed. Check logs."
 
-        token_res = requests.post(token_url, data=data)
+            return werkzeug.utils.redirect("/web#action=mail.action_discuss")
 
-        if token_res.status_code != 200:
-            _logger.error(f"Failed to get token: {token_res.text}")
-            return "<h3>❌ Failed to get token from Outlook.</h3>"
-
-        token_data = token_res.json()
-        access_token = token_data.get("access_token")
-        refresh_token = token_data.get("refresh_token")
-
-        if not access_token:
-            _logger.error(f"No access token received: {token_data}")
-            return "<h3>❌ No access token received.</h3>"
-
-        # Lấy thông tin user Outlook
-        user_info_res = requests.get(
-            "https://graph.microsoft.com/v1.0/me",
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-
-        if user_info_res.status_code != 200:
-            _logger.error(f"Failed to fetch user info: {user_info_res.text}")
-            return "<h3>❌ Failed to fetch user info.</h3>"
-
-        user_info = user_info_res.json()
-        outlook_email = user_info.get("mail") or user_info.get("userPrincipalName")
-
-        # Lưu vào gmail.account (chung cho cả Gmail và Outlook)
-        request.env["gmail.account"].sudo().create(
-            {
-                "user_id": request.env.user.id,
-                "email": outlook_email,
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "provider": "outlook",
-            }
-        )
-
-        _logger.info(f"✅ Outlook account {outlook_email} linked successfully!")
-
-        # Trả về giao diện đẹp + đóng popup
-        return """
-            <html>
-                <head><title>Outlook Connected</title></head>
-                <body>
-                    <h3>✅ Outlook account connected successfully!</h3>
-                    <script>
-                        window.opener.postMessage("outlook-auth-success", "*");
-                        setTimeout(function() {
-                            window.close();
-                        }, 1500);
-                    </script>
-                    <p>This window will close automatically...</p>
-                </body>
-            </html>
-        """
+        except Exception as e:
+            _logger.exception("Exception during Outlook callback handling")
+            return f"Unexpected error during sync: {str(e)}"
 
     @http.route("/outlook/auth", type="http", auth="user")
     def outlook_auth(self):

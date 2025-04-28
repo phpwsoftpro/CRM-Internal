@@ -11,6 +11,45 @@ _logger = logging.getLogger(__name__)
 
 class MailAuthController(http.Controller):
 
+    # Khởi động OAuth
+    @http.route("/<string:provider>/auth/start", type="http", auth="user")
+    def mail_auth_start(self, provider, **kw):
+        _logger.info(f"🔐 OAuth flow started for: {provider}")
+
+        if provider == "gmail":
+            config = request.env["mail.message"].sudo().get_google_config()
+            scope = "openid email https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send"
+            params = {
+                "client_id": config["client_id"],
+                "redirect_uri": config["redirect_uri"],
+                "response_type": "code",
+                "access_type": "offline",
+                "scope": scope,
+                "prompt": "consent select_account",
+                "include_granted_scopes": "false",
+            }
+            auth_url = f'{config["auth_uri"]}?{urllib.parse.urlencode(params)}'
+            _logger.info(f"🔗 Redirecting to Google OAuth URL: {auth_url}")
+            return redirect(auth_url)
+
+        elif provider == "outlook":
+            config = request.env["outlook.mail.sync"].sudo().get_outlook_config()
+            params = {
+                "client_id": config["client_id"],
+                "response_type": "code",
+                "redirect_uri": config["redirect_uri"],
+                "response_mode": "query",
+                "scope": "offline_access Mail.Read",
+            }
+            auth_url = f'https://login.microsoftonline.com/{config["tenant_id"]}/oauth2/v2.0/authorize?{urllib.parse.urlencode(params)}'
+            _logger.info(f"🔗 Redirecting to Outlook OAuth URL: {auth_url}")
+            return redirect(auth_url)
+
+        else:
+            _logger.error(f"❌ Invalid provider: {provider}")
+            return "<h3>❌ Invalid provider.</h3>"
+
+    # Callback xử lý code
     @http.route("/odoo/<string:provider>/auth/callback", type="http", auth="user")
     def mail_auth_callback(self, provider, **kw):
         _logger.info(f"📥 OAuth2 Callback từ: {provider} với params: {kw}")
@@ -106,8 +145,11 @@ class MailAuthController(http.Controller):
         )
 
         return f"""
-              <script>
-                window.opener.postMessage("gmail-auth-success", "*");
-                window.close();
-            </script>
+            <html><body>
+                <script>
+                    window.opener.postMessage("{provider}-auth-success", "*");
+                    window.close();
+                </script>
+                <p>{provider_name.capitalize()} connected successfully...</p>
+            </body></html>
         """

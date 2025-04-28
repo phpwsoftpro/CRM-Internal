@@ -16,9 +16,18 @@ class GmailInboxController(http.Controller):
     @http.route("/gmail/messages", type="json", auth="user", csrf=False)
     def get_gmail_messages(self, **kwargs):
         """
-        API lấy danh sách email theo từng tài khoản (qua email), đã fetch từ Gmail API.
+        API lấy danh sách email theo từng tài khoản (qua email), hỗ trợ phân trang giống Gmail.
         """
         email = kwargs.get("email")
+        page_token = kwargs.get("page_token")
+
+        try:
+            offset = int(page_token or 0)
+        except ValueError:
+            offset = 0
+
+        limit = 15
+
         domain = [
             ("message_type", "=", "email"),
             ("is_gmail", "=", True),
@@ -26,26 +35,23 @@ class GmailInboxController(http.Controller):
         if email:
             domain.append(("email_receiver", "ilike", email))
 
-        messages = (
-            request.env["mail.message"]
-            .sudo()
-            .search(domain, order="date_received desc", limit=1000)
+        Message = request.env["mail.message"].sudo()
+
+        # 👉 Tính tổng số thư
+        total = Message.search_count(domain)
+
+        # 👉 Lấy dữ liệu trang hiện tại + 1 dòng để kiểm tra next
+        messages = Message.search(
+            domain, order="date_received desc", limit=limit + 1, offset=offset
         )
 
         result = []
-        for msg in messages:
-            full_body = msg.body or "No Content"
+        for msg in messages[:limit]:
             attachments = (
                 request.env["ir.attachment"]
                 .sudo()
-                .search(
-                    [
-                        ("res_model", "=", "mail.message"),
-                        ("res_id", "=", msg.id),
-                    ]
-                )
+                .search([("res_model", "=", "mail.message"), ("res_id", "=", msg.id)])
             )
-
             attachment_list = [
                 {
                     "id": att.id,
@@ -56,7 +62,6 @@ class GmailInboxController(http.Controller):
                 }
                 for att in attachments
             ]
-
             result.append(
                 {
                     "id": msg.id,
@@ -68,14 +73,24 @@ class GmailInboxController(http.Controller):
                         if msg.date_received
                         else ""
                     ),
-                    "body": full_body,
+                    "body": msg.body or "No Content",
                     "attachments": attachment_list,
                     "thread_id": msg.thread_id or "",
                     "message_id": msg.message_id or "",
                 }
             )
 
-        return result
+        # 👉 Tính next và previous token
+        next_page_token = str(offset + limit) if len(messages) > limit else None
+        previous_page_token = str(max(offset - limit, 0)) if offset > 0 else None
+
+        return {
+            "messages": result,
+            "next_page_token": next_page_token,
+            "previous_page_token": previous_page_token,
+            "start_index": offset,
+            "total": total,
+        }
 
     @http.route("/gmail/current_user_info", type="json", auth="user")
     def current_user_info(self, **kwargs):
@@ -97,7 +112,7 @@ class GmailInboxController(http.Controller):
 
         return {
             "status": "success",
-            "email": accounts.email,  # ✅ trả về duy nhất 1 email
+            "email": accounts[0].email,
         }
 
     @http.route("/gmail/account_id_by_email", type="json", auth="user")
@@ -107,7 +122,7 @@ class GmailInboxController(http.Controller):
             .sudo()
             .search(
                 [
-                    ("gmail_email", "=", email),
+                    ("email", "=", email),
                     ("user_id", "=", request.env.user.id),
                 ],
                 limit=1,
@@ -119,6 +134,71 @@ class GmailInboxController(http.Controller):
     def sync_gmail_by_account(self, account_id):
         request.env["mail.message"].sudo().fetch_gmail_for_account(account_id)
         return {"status": "ok"}
+
+    @http.route("/gmail/save_account", type="json", auth="user", csrf=False)
+    def save_gmail_account(self, email, **kwargs):
+        user_id = request.env.user.id
+        GmailAccount = request.env["gmail.account"].sudo()
+
+        # Tránh lưu trùng
+        existing = GmailAccount.search(
+            [
+                ("email", "=", email),
+                ("user_id", "=", user_id),
+            ],
+            limit=1,
+        )
+
+        if not existing:
+            GmailAccount.create(
+                {
+                    "user_id": user_id,
+                    "email": email,
+                }
+            )
+
+        return {"status": "saved"}
+
+    @http.route("/gmail/my_accounts", type="json", auth="user")
+    def my_gmail_accounts(self):
+        accounts = (
+            request.env["gmail.account"]
+            .sudo()
+            .search(
+                [
+                    ("user_id", "=", request.env.user.id),
+                ]
+            )
+        )
+        return [
+            {
+                "id": acc.id,
+                "email": acc.email,
+                "name": (acc.email or "").split("@")[0] if acc.email else "Unknown",
+                "initial": (acc.email or "X")[0].upper(),
+                "status": "active",
+            }
+            for acc in accounts
+        ]
+
+    @http.route("/gmail/delete_account", type="json", auth="user", csrf=False)
+    def delete_account(self, account_id):
+        account = (
+            request.env["gmail.account"]
+            .sudo()
+            .search(
+                [
+                    ("id", "=", account_id),
+                    ("user_id", "=", request.env.user.id),
+                ],
+                limit=1,
+            )
+        )
+
+        if account:
+            account.unlink()
+            return {"status": "deleted"}
+        return {"status": "not_found"}
 
 
 class UploadController(http.Controller):
@@ -200,7 +280,7 @@ def send_email_with_gmail_api(
             "thread_id": resp_data.get("threadId"),
             "message_id": resp_data.get("messageId"),
         }
-    else:
+    else:   
         _logger.error("Failed to send Gmail: %s", response.text)
         return {
             "status": "error",

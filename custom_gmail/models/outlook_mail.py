@@ -136,11 +136,3 @@ class OutlookMailSync(models.Model):
             _logger.error(f"Error syncing emails: {str(e)}")
             sync_job.write({"status": "failed"})
             return False
-
-    @api.model
-    def redirect_to_outlook_messages(self):
-        return {
-            "type": "ir.actions.client",
-            "tag": "outlook_inbox_ui",  # phải trùng với JS OWL tag
-            "name": "Outlook Inbox",
-        }
