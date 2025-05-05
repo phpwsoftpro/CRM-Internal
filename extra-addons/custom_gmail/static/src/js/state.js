@@ -8,7 +8,7 @@ export function initialState() {
         email: "",
         selectedAccount: null,
         selectedMessage: null,
-        currentThread: [],
+        currentThread: []                                 ,
         messages: [],
         threads: {},
         showComposeModal: false,

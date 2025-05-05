@@ -125,6 +125,7 @@ export class GmailInbox extends Component {
             total: result.total || 0,
         };
         this.state.loading = false
+        
     }
     
     
