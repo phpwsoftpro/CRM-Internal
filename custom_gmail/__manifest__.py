@@ -27,11 +27,15 @@
             "custom_gmail/static/src/js/functions/onSendEmail.js",
             "custom_gmail/static/src/js/functions/index.js",
             "custom_gmail/static/src/js/functions/addGmail.js",
+            "custom_gmail/static/src/js/functions/onTrash.js",
+            "custom_gmail/static/src/js/functions/switchFolder.js",
+            "custom_gmail/static/src/js/functions/onTrashSelected.js",
             "custom_gmail/static/src/js/uiUtils.js",
             "custom_gmail/static/src/js/storageUtils.js",
             "custom_gmail/static/src/js/ckeditor.js",
             "custom_gmail/static/src/js/template.js",
             "custom_gmail/static/src/js/upload_adapter.js",
+            
         ]
     },
     "installable": True,

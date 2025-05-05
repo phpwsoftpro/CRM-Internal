@@ -16,5 +16,6 @@ export function initialState() {
         showDropdownVertical: false,
         showAccountDropdown: false,
         showAccounts: false,
+        activeFolder: 'INBOX',
     });
 }

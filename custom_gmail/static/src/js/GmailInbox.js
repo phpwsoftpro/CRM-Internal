@@ -3,7 +3,7 @@ import { Component, onMounted } from "@odoo/owl";
 import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
 import { initCKEditor, loadCKEditor } from "./ckeditor";
-import { onForward, onReply, onReplyAll, onSendEmail, toggleStar } from "./functions/index";
+import { onForward, onReply, onReplyAll, onSendEmail, toggleStar,onTrash,switchFolder,onTrashSelected   } from "./functions/index";
 import { openComposeModal } from "./functions/openComposeModal";
 import { initialState } from "./state";
 import { loadStarredState, saveStarredState } from "./storageUtils";
@@ -54,6 +54,9 @@ export class GmailInbox extends Component {
         this.toggleThreadMessage = toggleThreadMessage.bind(this);
         this.onCloseCompose = onCloseCompose.bind(this);
         this.onSendEmail = onSendEmail.bind(this);
+        this.onTrash = onTrash.bind(this);
+        this.onTrashSelected = onTrashSelected.bind(this);
+        this.switchFolder = switchFolder.bind(this);
         this.openFilePreview = openFilePreview;
         this.addGmailAccount = this._addGmailAccount;
         this.switchTab = this._switchTab.bind(this);
@@ -109,6 +112,7 @@ export class GmailInbox extends Component {
         const result = await rpc("/gmail/messages", {
             email,
             page_token: pageToken,
+            folder: this.state.activeFolder,
         });
     
         this.state.pagination = {
@@ -121,6 +125,7 @@ export class GmailInbox extends Component {
             total: result.total || 0,
         };
         this.state.loading = false
+        
     }
     
     
