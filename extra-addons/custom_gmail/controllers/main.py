@@ -17,9 +17,18 @@ class GmailSyncController(http.Controller):
     #     }
     @http.route("/gmail/user_email", auth="user", type="json")
     def gmail_user_email(self):
-        email = (
+        gmail_email = (
             request.env["ir.config_parameter"]
             .sudo()
             .get_param("gmail_authenticated_email")
         )
-        return {"email": email or ""}
+        return {"gmail_email": gmail_email or ""}
+
+    @http.route("/outlook/user_email", auth="user", type="json")
+    def outlook_user_email(self):
+        outlook_email = (
+            request.env["ir.config_parameter"]
+            .sudo()
+            .get_param("outlook_authenticated_email")
+        )
+        return {"outlook_email": outlook_email or ""}

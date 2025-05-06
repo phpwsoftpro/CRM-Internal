@@ -49,14 +49,14 @@ class OutlookMailSync(models.Model):
         }
 
     def get_outlook_config(self):
-        """Load outlook API configuration for OAuth2."""
+        Param = self.env["ir.config_parameter"].sudo()
         return {
-            "client_id": "e13f6610-41e1-4574-bfbd-942d7ce3a60d",
-            "client_secret": ".nC8Q~U8KAsX-qAEXYaFnqCJXQBRs24kCL66Bcyu",
-            "auth_uri": "https://login.microsoftonline.com/162ab723-49cb-414c-9fd1-891cf83c685a/oauth2/v2.0/authorize",
-            "token_uri": "https://login.microsoftonline.com/162ab723-49cb-414c-9fd1-891cf83c685a/oauth2/v2.0/token",
-            "redirect_uri": "http://localhost:8070/odoo/outlook/auth/callback",
-            "tenant_id": "162ab723-49cb-414c-9fd1-891cf83c685a",
+            "client_id": Param.get_param("outlook_client_id"),
+            "client_secret": Param.get_param("outlook_client_secret"),
+            "tenant_id": Param.get_param("outlook_tenant_id"),
+            "redirect_uri": Param.get_param("outlook_redirect_uri"),
+            "auth_uri": f"https://login.microsoftonline.com/{Param.get_param('outlook_tenant_id')}/oauth2/v2.0/authorize",
+            "token_uri": f"https://login.microsoftonline.com/{Param.get_param('outlook_tenant_id')}/oauth2/v2.0/token",
         }
 
     def create_sync_job(self, user_id):

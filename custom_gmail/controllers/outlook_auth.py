@@ -1,9 +1,11 @@
-import logging
-import werkzeug
 from odoo import http
 from odoo.http import request
-import msal
+import requests
+import logging
 import urllib.parse
+import werkzeug
+import msal
+import json
 
 _logger = logging.getLogger(__name__)
 
@@ -12,14 +14,10 @@ class OutlookAuthController(http.Controller):
 
     @http.route("/outlook/auth/start", type="http", auth="user", methods=["GET"])
     def outlook_auth_start(self, **kw):
-
         _logger.info("🔐 Outlook OAuth flow started from /outlook/auth/start")
 
-        # Gọi config từ model outlook.mail.sync
-
         config = request.env["outlook.mail.sync"].sudo().get_outlook_config()
-
-        scope = "https://graph.microsoft.com/Mail.Read offline_access"
+        scope = "https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/User.Read offline_access"
 
         params = {
             "client_id": config["client_id"],
@@ -30,48 +28,76 @@ class OutlookAuthController(http.Controller):
             "prompt": "select_account",
         }
 
-        auth_url = f"https://login.microsoftonline.com/{config['tenant_id']}/oauth2/v2.0/authorize?{urllib.parse.urlencode(params)}"
-
-        _logger.info(f"🔗 Redirecting to Outlook OAuth URL: {auth_url}")
-
+        auth_url = f"{config['auth_uri']}?{urllib.parse.urlencode(params)}"
         return werkzeug.utils.redirect(auth_url)
 
     @http.route("/odoo/outlook/auth/callback", type="http", auth="user")
     def outlook_callback(self, **kw):
-        _logger.info("Received OAuth callback from Outlook")
+        _logger.info("📥 Outlook callback received with params: %s", kw)
 
         code = kw.get("code")
-        state = kw.get("state")
-        error = kw.get("error")
-
-        if error:
-            _logger.error(f"OAuth error: {error}")
-            return "Authentication failed. Please try again."
-
         if not code:
-            _logger.warning("No code received from Outlook.")
-            return "No authentication code received."
+            return """<script>window.opener.postMessage("outlook-auth-missing-code", "*");window.close();</script>"""
 
-        try:
-            user = request.env.user.sudo()  # dùng sudo để tránh lỗi nếu không đủ quyền
-            user.write(
+        config = request.env["outlook.mail.sync"].sudo().get_outlook_config()
+
+        token_data = {
+            "client_id": config["client_id"],
+            "client_secret": config["client_secret"],
+            "code": code,
+            "redirect_uri": config["redirect_uri"],
+            "grant_type": "authorization_code",
+        }
+
+        response = requests.post(config["token_uri"], data=token_data)
+        token_info = response.json()
+
+        if "access_token" not in token_info:
+            return """<script>window.opener.postMessage("outlook-auth-token-failed", "*");window.close();</script>"""
+
+        access_token = token_info.get("access_token")
+        refresh_token = token_info.get("refresh_token")
+
+        # Lấy email từ Microsoft Graph
+        graph_headers = {"Authorization": f"Bearer {access_token}"}
+        graph_response = requests.get(
+            "https://graph.microsoft.com/v1.0/me", headers=graph_headers
+        )
+
+        email = None
+        if graph_response.ok:
+            user_info = graph_response.json()
+            email = user_info.get("mail") or user_info.get("userPrincipalName")
+
+        # Lưu vào res.users
+        user = request.env.user.sudo()
+        user.write(
+            {
+                "outlook_access_token": access_token,
+                "outlook_refresh_token": refresh_token,
+                "outlook_authenticated_email": email or False,
+            }
+        )
+
+        # ✅ Tạo outlook.account nếu chưa có
+        OutlookAccount = request.env["outlook.account"].sudo()
+        existing = OutlookAccount.search(
+            [
+                ("email", "=", email),
+                ("user_id", "=", user.id),
+            ],
+            limit=1,
+        )
+
+        if not existing:
+            OutlookAccount.create(
                 {
-                    "outlook_auth_code": code,
-                    "outlook_auth_state": state,
+                    "email": email,
+                    "user_id": user.id,
                 }
             )
-            _logger.info(f"Saved Outlook auth code for user {user.id}")
 
-            # Sync ngay sau khi đăng nhập
-            success = request.env["outlook.mail.sync"].sudo().create_sync_job(user.id)
-            if not success:
-                return "Authentication succeeded, but email sync failed. Check logs."
-
-            return werkzeug.utils.redirect("/web#action=mail.action_discuss")
-
-        except Exception as e:
-            _logger.exception("Exception during Outlook callback handling")
-            return f"Unexpected error during sync: {str(e)}"
+        return """<script>window.opener.postMessage("outlook-auth-success", "*");window.close();</script>"""
 
     @http.route("/outlook/auth", type="http", auth="user")
     def outlook_auth(self):
@@ -88,3 +114,34 @@ class OutlookAuthController(http.Controller):
         )
 
         return request.redirect(auth_url)
+
+    @http.route("/outlook/messages", type="json", auth="user")
+    def outlook_messages(self, **kw):
+        user = request.env.user.sudo()
+        access_token = user.outlook_access_token
+        if not access_token:
+            return {"status": "error", "message": "No Outlook access token found"}
+
+        url = "https://graph.microsoft.com/v1.0/me/messages?$orderby=receivedDateTime desc&$top=20"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        response = requests.get(url, headers=headers)
+
+        if response.status_code != 200:
+            _logger.error(f"❌ Failed to fetch Outlook messages: {response.text}")
+            return {"status": "error", "message": "Failed to fetch messages"}
+
+        messages = response.json().get("value", [])
+        return {
+            "status": "ok",
+            "messages": [
+                {
+                    "id": msg["id"],
+                    "subject": msg["subject"],
+                    "sender": msg.get("sender", {}).get("emailAddress", {}).get("name"),
+                    "from": msg.get("from", {}).get("emailAddress", {}).get("address"),
+                    "date": msg["receivedDateTime"],
+                    "bodyPreview": msg["bodyPreview"],
+                }
+                for msg in messages
+            ],
+        }
