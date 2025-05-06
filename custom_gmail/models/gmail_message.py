@@ -17,7 +17,6 @@ class GmailMessage(models.Model):
     thread_id = fields.Char(string="Thread ID")
     message_id = fields.Char(string="Message ID")
     is_trashed = fields.Boolean(string="Is in Trash", default=False)
-
     gmail_account_id = fields.Many2one(
         "gmail.account", string="Gmail Account", index=True
     )
