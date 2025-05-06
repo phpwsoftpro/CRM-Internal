@@ -78,18 +78,20 @@ export default xml`
                     <i class="fa fa-pencil"></i> <span>Soạn thư</span>
                 </button>
                 <ul class="gmail-menu">
-                    <li><i class="fa fa-inbox"></i> <span>Hộp thư đến</span></li>
+                    <li t-att-class="state.activeFolder==='INBOX'?'active':''" t-on-click="() => this.switchFolder('INBOX')"><i class="fa fa-inbox"></i> <span>Hộp thư đến</span></li>
                     <li><i class="fa fa-star-o"></i> <span>Có gắn dấu sao</span></li>
                     <li><i class="fa fa-clock-o"></i> <span>Đã tạm ẩn</span></li>
                     <li><i class="fa fa-paper-plane"></i> <span>Đã gửi</span></li>
                     <li><i class="fa fa-file"></i> <span>Thư nháp</span></li>
+                    <li t-att-class="state.activeFolder==='TRASH'?'active':''" t-on-click="() => this.switchFolder('TRASH')"><i class="fa fa-trash-o"></i> <span>Thùng rác</span></li>
                     <li><i class="fa fa-chevron-down"></i> <span>Hiện thêm</span></li>
+                    
                 </ul>
             </div>
             <div class="gmail-header">
                 <!-- Filters & Actions -->
                 <div class="header-actions">
-                    <div class="email-checkbox-all"> <input type="checkbox" id="selectAll" t-on-click="toggleSelectAll" style="cursor: pointer;"/></div>
+                    <div class="email-checkbox-all" > <input type="checkbox" id="selectAll" t-on-click="toggleSelectAll" style="cursor: pointer;"/></div>
                     <div class="dropdown-caret">
                         <button class="dropdown-icon" t-on-click="toggleDropdown">
                             <i class="fa fa-caret-down"></i>
@@ -108,10 +110,46 @@ export default xml`
                         <i class="fa fa-refresh"></i>
                     </button>
 
-                    <button class="icon-btn-option" t-on-click="toggleDropdownVertical">
+                    <button
+                        t-att-class="state.pagination.messages.some(m => m.selected)
+                            ? 'icon-btn-option-selected'
+                            : 'icon-btn-option'"
+                        t-on-click="toggleDropdownVertical"
+                        >
                         <i class="fa fa-ellipsis-v"></i>
                     </button>
 
+                    
+                    <button
+                        class="icon-btn-delete"
+                        t-if="state.pagination.messages.some(m => m.selected)"
+                        t-on-click="() => this.onTrashSelected()"
+                        t-att-title="state.activeFolder==='TRASH' ? 'Xóa vĩnh viễn' : 'Xóa vào thùng rác'"
+                    >
+                        <i class="fa fa-trash-o"></i>
+                    </button>
+                    <button
+                        class="icon-btn-read"
+                        t-if="state.pagination.messages.some(m => m.selected)"
+                      
+                        title="Đánh dấu là đã đọc"
+                    >
+                        <i class="fa fa-envelope-open-o"></i>
+                    </button>
+                    <button
+                        class="icon-btn-move"
+                        t-if="state.pagination.messages.some(m => m.selected)"
+                      
+                        title="Chuyển tới"
+                    >
+                       <span class="fa-stack fa-lg">
+                            <!-- 1) Folder nền -->
+                            <i class="fa fa-folder-o fa-stack-2x"></i>
+                            <!-- 2) Mũi tên -->
+                            <i class="fa fa-arrow-right fa-stack-1x" style="left:0px;top:0px;"></i>
+                        </span>
+
+                    </button>
                     <div class="dropdown-menu-vertical" t-attf-class="{{ state.showDropdownVertical ? 'visible' : 'hidden' }}">
                         <div class="dropdown-item">
                             <i class="fa fa-envelope-open-o"></i> Mark all as read
@@ -122,25 +160,33 @@ export default xml`
                     </div>
                 </div>
 
-                <!-- Tabs -->
+               <!-- Tabs -->
                 <div class="gmail-tabs">
+                    <!-- Các tab account đang có -->
                     <t t-foreach="state.accounts" t-as="acc" t-key="acc.id">
-                        <div class="tab" t-att-class="acc.id === state.activeTabId ? 'tab active' : 'tab'" t-att-data-email="acc.email"
+                        <div class="tab" t-att-class="acc.id === state.activeTabId ? 'tab active' : 'tab'" 
+                            t-att-data-email="acc.email"
                             t-on-click="() => this.switchTab(acc.id)">
-                            <i class="fa fa-inbox"></i> <t t-esc="acc.email"/>
+                            <i class="fa fa-inbox"></i> 
+                            <t t-esc="acc.email"/>
                             <i class="fa fa-times close-tab"
-                                title="Đóng"
-                                style="margin-left: 8px; cursor: pointer;"
-                                t-on-click.stop="() => this.closeTab(acc.id)"></i>
+                            title="Đóng"
+                            style="margin-left: 8px; cursor: pointer;"
+                            t-on-click.stop="() => this.closeTab(acc.id)"></i>
                         </div>
                     </t>
-                    <div class="tab add-tab" t-on-click="() => this.addGmailAccount()">
 
-                        <i class="fa fa-plus"></i>
+                    <!-- Nút login Gmail -->
+                    <div class="tab login-tab" t-on-click="() => this.addGmailAccount()">
+                        <img src="/custom_gmail/static/src/img/gmail_1.svg" alt="Gmail" class="icon-svg"/>
+                    </div>
+
+                    <!-- Nút login Outlook -->
+                    <div class="tab login-tab" t-on-click="() => this.addOutlookAccount()">
+                        <img src="/custom_gmail/static/src/img/outlook.svg" alt="Outlook" class="icon-svg"/>
                     </div>
                 </div>
                     <div class="tab-content">
-                        
                             <div class="gmail-content" >
                                 <div class="content-container">
                                     <div class="email-list">
@@ -149,6 +195,7 @@ export default xml`
                                         <t t-set="activeMessages" t-value="(state.messagesByEmail[activeEmail]) or []"/>
 
                                         <t t-foreach="activeMessages" t-as="msg" t-key="msg.id">
+                                            
                                             <div class="email-item"
                                                 t-att-class="msg.unread ? 'email-row unread' : 'email-row'"
                                                 t-on-click="() => this.onMessageClick(msg)">
@@ -168,19 +215,40 @@ export default xml`
                                                         <div class="email-subject"><b><t t-esc="msg.subject"/></b></div>
                                                         <div class="email-preview"><t t-esc="msg.preview"/></div>
                                                     </div>
-                                                </div>
-                                                <!-- Star & Actions -->
-                                                <div class="email-star-actions">
-                                                    <div class="email-star" t-on-click.stop="() => this.toggleStar(msg)">
-                                                        <t t-if="msg.starred">
-                                                            <i class="fa fa-star" style="color: #e8e832;"></i>
-                                                        </t>
-                                                        <t t-else="">
-                                                            <i class="fa fa-star-o"></i>
-                                                        </t>
-                                                    </div>
+                                                    <div class="email-actions">
+                                                        <div class="email-read-actions" >
+                                                            <div class="email-read"  t-on-click.stop="() => this.onTrash(msg)">
+                                                                     <i class="fa fa-envelope-open-o"></i>
+                                                            </div>
+                                                        </div>
+                                                        <div class="email-move-actions">
+                                                            <span class="fa-stack fa-lg email-move">
+                                                                <!-- 1) Folder nền -->
+                                                                <i class="fa fa-folder-o fa-stack-2x"></i>
+                                                                <!-- 2) Mũi tên -->
+                                                                <i class="fa fa-arrow-right fa-stack-1x" style="left:0px;top:0px;"></i>
+                                                            </span>
+                                                        </div>
+                                                        <div t-att-class="state.activeFolder==='TRASH' ? 'email-trashed' : 'email-delete-actions'"  >
+                                                                    <div class="email-delete"  t-on-click.stop="() => this.onTrash(msg)">
+                                                                    <i class="fa fa-trash-o"></i>
+                                                                    </div>
+                                                        </div>
+                                                        <!-- Star & Actions -->
+                                                                <div t-att-class="state.activeFolder==='TRASH' ? 'email-trashed' : 'email-star-actions'">
+                                                                    <div class="email-star" t-on-click.stop="() => this.toggleStar(msg)">
+                                                                        <t t-if="msg.starred">
+                                                                            <i class="fa fa-star" style="color: #e8e832;"></i>
+                                                                        </t>
+                                                                        <t t-else="">
+                                                                            <i class="fa fa-star-o"></i>
+                                                                        </t>
+                                                                    </div>
+                                                                </div>
+                                                    </div>    
                                                 </div>
                                             </div>
+                                                
                                         </t>
                                     </div>
 
@@ -224,7 +292,7 @@ export default xml`
                                                         </div>
 
                                                         <div class="message-content" t-att-style="threadMsg.collapsed ? 'display: none;' : 'display: block;'">
-                                                            <t t-raw="threadMsg.body"/>
+                                                            <t t-esc="threadMsg.body"/>
                                                         </div>
                                                         
                                                         <div class="email-attachments" t-if="threadMsg.attachments and threadMsg.attachments.length">

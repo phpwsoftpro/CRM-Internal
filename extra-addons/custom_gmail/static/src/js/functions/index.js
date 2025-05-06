@@ -8,3 +8,7 @@ export { onForward } from "./onForward";
 export { openComposeModal } from "./openComposeModal";
 export { fillComposeForm } from "./fillComposeForm";
 export { onSendEmail } from "./onSendEmail";
+export {onTrash} from "./onTrash"
+export { switchFolder } from './switchFolder';
+export { onTrashSelected } from './onTrashSelected';
+

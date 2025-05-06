@@ -4,3 +4,4 @@ remote_script.sh
 **/__pycache__/
 *.pyc
 *.rar
+*.zip
