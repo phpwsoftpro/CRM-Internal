@@ -3,7 +3,7 @@ import { Component, onMounted } from "@odoo/owl";
 import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
 import { initCKEditor, loadCKEditor } from "./ckeditor";
-import { onForward, onReply, onReplyAll, onSendEmail, toggleStar } from "./functions/index";
+import { onForward, onReply, onReplyAll, onSendEmail, toggleStar,onTrash,switchFolder,onTrashSelected   } from "./functions/index";
 import { openComposeModal } from "./functions/openComposeModal";
 import { initialState } from "./state";
 import { loadStarredState, saveStarredState } from "./storageUtils";
@@ -55,6 +55,9 @@ export class GmailInbox extends Component {
         this.toggleThreadMessage = toggleThreadMessage.bind(this);
         this.onCloseCompose = onCloseCompose.bind(this);
         this.onSendEmail = onSendEmail.bind(this);
+        this.onTrash = onTrash.bind(this);
+        this.onTrashSelected = onTrashSelected.bind(this);
+        this.switchFolder = switchFolder.bind(this);
         this.openFilePreview = openFilePreview;
         this.addGmailAccount = this._addGmailAccount;
         this.addOutlookAccount = this._addOutlookAccount;
@@ -103,23 +106,27 @@ export class GmailInbox extends Component {
         });
     }
     
-    async loadGmailMessages(email) {
-        const messages = await rpc("/gmail/messages", { email });
-        this.state.messagesByEmail[email] = messages;
-        this.state.messages = messages;
-    }
+
+    async loadMessages(email, pageToken = null) {
+        this.state.loading = true;
+        const result = await rpc("/gmail/messages", {
+            email,
+            page_token: pageToken,
+            folder: this.state.activeFolder,
+        });
     
-    async loadOutlookMessages(email) {
-        const res = await rpc("/outlook/messages");
-        console.log("📬 Outlook messages res:", res);
-        if (res.status === "ok") {
-            const messages = res.messages.map((msg) => ({ ...msg, type: "outlook" }));
-            this.state.messagesByEmail[email] = messages;
-            this.state.messages = messages;
-        } else {
-            console.warn("⚠️ Outlook fetch failed:", res.message);
-            this.state.messages = [];
-        }
+        this.state.pagination = {
+            email,
+            pageToken,
+            messages: result.messages || [],
+            nextPageToken: result.next_page_token || null,
+            previousPageToken: result.previous_page_token || null,
+            startIndex: result.start_index || 0,
+            total: result.total || 0,
+        };
+        this.state.loading = false
+        
+
     }
     
     

@@ -1,4 +1,4 @@
-from odoo import http
+from odoo import http, fields
 from odoo.http import request
 from bs4 import BeautifulSoup
 import re
@@ -10,7 +10,7 @@ import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.header import Header
-
+from datetime import timedelta
 
 class GmailInboxController(http.Controller):
     @staticmethod
@@ -26,9 +26,21 @@ class GmailInboxController(http.Controller):
         API lấy danh sách email theo từng tài khoản (qua email), đã fetch từ Gmail API.
         """
         email = kwargs.get("email")
+
+        page_token = kwargs.get("page_token")
+        folder     = kwargs.get("folder", "INBOX").upper()
+        try:
+            offset = int(page_token or 0)
+        except ValueError:
+            offset = 0
+
+        limit = 15
+
+
         domain = [
             ("message_type", "=", "email"),
             ("is_gmail", "=", True),
+            ("is_trashed", "=", True  if folder == "TRASH" else False)
         ]
         if email:
             domain.append(("email_receiver", "ilike", email))
@@ -79,6 +91,7 @@ class GmailInboxController(http.Controller):
                     "attachments": attachment_list,
                     "thread_id": msg.thread_id or "",
                     "message_id": msg.message_id or "",
+                    "account_id":    msg.gmail_account_id.id,
                 }
             )
 
@@ -192,6 +205,149 @@ class GmailInboxController(http.Controller):
             account.unlink()
             return {"status": "deleted"}
         return {"status": "not_found"}
+
+    @http.route('/gmail/trash', type='json', auth='user', csrf=False)
+    def gmail_trash(self, message_id, account_id=None):
+        _logger.info("🗑️ gmail_trash called with message_id=%s, account_id=%s", message_id, account_id)
+
+        # 1) Lấy mail.message
+        try:
+            msg = request.env['mail.message'].sudo().browse(int(message_id))
+        except Exception as e:
+            _logger.error("❌ Invalid message_id=%s: %s", message_id, e)
+            return {'success': False, 'error': 'message_id không hợp lệ.'}
+        if not msg:
+            _logger.error("❌ No mail.message found for id=%s", message_id)
+            return {'success': False, 'error': 'Không tìm thấy thư.'}
+        _logger.info("✅ Found mail.message id=%s, gmail_id=%s", msg.id, msg.gmail_id)
+
+        # 2) Lấy gmail.account từ param
+        if not account_id:
+            _logger.error("❌ Missing account_id in request")
+            return {'success': False, 'error': 'Thiếu account_id.'}
+        acct = request.env['gmail.account'].sudo().browse(int(account_id))
+        if not acct:
+            _logger.error("❌ No gmail.account for id=%s", account_id)
+            return {'success': False, 'error': 'Tài khoản Gmail không tồn tại.'}
+        _logger.info("🔑 Using Gmail account id=%s, email=%s", acct.id, acct.email)
+
+        # 3) Refresh token nếu cần (giống gmail_delete)
+        now = fields.Datetime.now()
+        token = acct.access_token
+        if not token or (acct.token_expiry and acct.token_expiry < now):
+            _logger.info("🔄 Access token expired or missing, refreshing…")
+            config = request.env['mail.message'].sudo().get_google_config()
+            data = {
+                'client_id':     config['client_id'],
+                'client_secret': config['client_secret'],
+                'refresh_token': acct.refresh_token,
+                'grant_type':    'refresh_token',
+            }
+            try:
+                resp = requests.post(config['token_uri'], data=data)
+                resp.raise_for_status()
+                tok = resp.json()
+                token = tok.get('access_token')
+                expires = tok.get('expires_in')
+                vals = {}
+                if token:
+                    vals['access_token'] = token
+                if expires:
+                    vals['token_expiry'] = fields.Datetime.to_string(
+                        now + timedelta(seconds=int(expires))
+                    )
+                if tok.get('refresh_token'):
+                    vals['refresh_token'] = tok.get('refresh_token')
+                acct.write(vals)
+                _logger.info("✅ Token refreshed (expires at %s)", acct.token_expiry)
+            except Exception as e:
+                _logger.error("❌ Failed to refresh token: %s", e)
+                return {'success': False, 'error': 'Không thể làm mới access token.'}
+
+        # 4) Gọi Gmail API move-to-trash
+        url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg.gmail_id}/trash"
+        _logger.info("🌐 POST %s", url)
+        try:
+            resp = requests.post(url, headers={'Authorization': f'Bearer {token}'})
+            _logger.info("📨 Gmail API response status=%s, body=%s", resp.status_code, resp.text)
+        except Exception as e:
+            _logger.error("❌ HTTP request to Gmail API failed: %s", e)
+            return {'success': False, 'error': 'Không thể kết nối Gmail API.'}
+
+        # Xem như thành công nếu 200 hoặc 404, chỉ báo lỗi với các mã khác
+        if resp.status_code not in (200, 404):
+            _logger.error("❌ Gmail API move-to-trash error: %s", resp.text)
+            return {'success': False, 'error': resp.text}
+
+        # 5) Đánh dấu is_trashed trong Odoo
+        try:
+            msg.write({'is_trashed': True})
+            _logger.info("✔️ Marked mail.message id=%s is_trashed=True", msg.id)
+        except Exception as e:
+            _logger.error("❌ Failed to write is_trashed on message id=%s: %s", msg.id, e)
+            return {'success': False, 'error': 'Không thể cập nhật Odoo.'}
+
+        return {'success': True}
+
+    @http.route('/gmail/delete', type='json', auth='user', csrf=False)
+    def gmail_delete(self, message_id, account_id=None):
+        _logger.info("🗑️ gmail_delete called with message_id=%s, account_id=%s", message_id, account_id)
+        # 1) load mail.message
+        msg = request.env['mail.message'].sudo().browse(int(message_id))
+        if not msg:
+            _logger.error("❌ No mail.message for id=%s", message_id)
+            return {'success': False, 'error': 'Mail không tồn tại.'}
+
+        # 2) load gmail.account
+        if not account_id:
+            _logger.error("❌ Missing account_id")
+            return {'success': False, 'error': 'Thiếu account_id.'}
+        acct = request.env['gmail.account'].sudo().browse(int(account_id))
+        if not acct:
+            _logger.error("❌ No gmail.account for id=%s", account_id)
+            return {'success': False, 'error': 'Tài khoản Gmail không tồn tại.'}
+
+        # 3) refresh token nếu hết hạn (giống hàm gmail_trash)
+        now = fields.Datetime.now()
+        token = acct.access_token
+        if not token or (acct.token_expiry and acct.token_expiry < now):
+            _logger.info("🔄 Refreshing access token…")
+            config = request.env['mail.message'].sudo().get_google_config()
+            data = {
+                'client_id':     config['client_id'],
+                'client_secret': config['client_secret'],
+                'refresh_token': acct.refresh_token,
+                'grant_type':    'refresh_token',
+            }
+            resp = requests.post(config['token_uri'], data=data)
+            resp.raise_for_status()
+            tok = resp.json()
+            token = tok.get('access_token')
+            expires = tok.get('expires_in')
+            vals = {'access_token': token}
+            if expires:
+                vals['token_expiry'] = fields.Datetime.to_string(now + timedelta(seconds=int(expires)))
+            acct.write(vals)
+            _logger.info("✅ Token refreshed")
+
+        # 4) gọi Gmail API DELETE
+        url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg.gmail_id}"
+        _logger.info("🌐 DELETE %s", url)
+        resp = requests.delete(url, headers={'Authorization': f'Bearer {token}'})
+        _logger.info("📨 Gmail API delete status=%s, body=%s", resp.status_code, resp.text)
+        if resp.status_code not in (200, 204, 404):
+            _logger.error("❌ Gmail API delete error: %s", resp.text)
+            return {'success': False, 'error': resp.text}
+
+        # 5) unlink record Odoo
+        try:
+            msg.unlink()
+            _logger.info("✔️ mail.message id=%s unlinked", message_id)
+        except Exception as e:
+            _logger.error("❌ Failed to unlink mail.message id=%s: %s", message_id, e)
+            return {'success': False, 'error': 'Không thể xóa record trong Odoo.'}
+
+        return {'success': True}
 
 
 class UploadController(http.Controller):
