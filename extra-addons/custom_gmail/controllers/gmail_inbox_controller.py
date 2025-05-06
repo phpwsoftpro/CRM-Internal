@@ -13,6 +13,13 @@ from email.header import Header
 
 
 class GmailInboxController(http.Controller):
+    @staticmethod
+    def clean_gmail_body(html_content):
+        soup = BeautifulSoup(html_content or "", "lxml")
+        for tag in soup(["style", "script"]):
+            tag.decompose()
+        return soup.get_text(separator="\n").strip()
+
     @http.route("/gmail/messages", type="json", auth="user", csrf=False)
     def get_gmail_messages(self, **kwargs):
         """
@@ -34,7 +41,7 @@ class GmailInboxController(http.Controller):
 
         result = []
         for msg in messages:
-            full_body = msg.body or "No Content"
+            full_body = self.clean_gmail_body(msg.body)
             attachments = (
                 request.env["ir.attachment"]
                 .sudo()
@@ -162,6 +169,7 @@ class GmailInboxController(http.Controller):
                 "name": (acc.email or "").split("@")[0] if acc.email else "Unknown",
                 "initial": (acc.email or "X")[0].upper(),
                 "status": "active",
+                "type": "gmail",
             }
             for acc in accounts
         ]
