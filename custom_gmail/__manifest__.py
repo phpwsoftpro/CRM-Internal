@@ -9,6 +9,7 @@
     "depends": ["mail"],
     "data": [
         "views/discuss_view.xml",
+        "data/ir_cron.xml",
     ],
     "assets": {
         "web.assets_backend": [

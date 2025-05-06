@@ -90,6 +90,14 @@ export class GmailInbox extends Component {
             }
         
             this.loadAuthenticatedEmail();
+            setInterval(() => {
+                if (this.state.activeTabId) {
+                    const acc = this.state.accounts.find(a => a.id === this.state.activeTabId);
+                    if (acc) {
+                        this.loadMessages(acc.email);
+                    }
+                }
+            }, 5000);
         });
         
         
