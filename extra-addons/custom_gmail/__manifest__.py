@@ -15,6 +15,7 @@
             "custom_gmail/static/src/css/gmail_inbox.css",
             "custom_gmail/static/src/css/compose_modal.css",
             "custom_gmail/static/src/css/gmail_attachment.css",
+            "custom_gmail/static/src/css/form_provider.css",
             "custom_gmail/static/src/js/GmailInbox.js",
             "custom_gmail/static/src/js/state.js",
             "custom_gmail/static/src/js/functions/loadMessages.js",

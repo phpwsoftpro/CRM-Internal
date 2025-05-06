@@ -160,39 +160,40 @@ export default xml`
                     </div>
                 </div>
 
-                <!-- Tabs -->
+               <!-- Tabs -->
                 <div class="gmail-tabs">
+                    <!-- Các tab account đang có -->
                     <t t-foreach="state.accounts" t-as="acc" t-key="acc.id">
-                        <div class="tab" t-att-class="acc.id === state.activeTabId ? 'tab active' : 'tab'" t-att-data-email="acc.email"
+                        <div class="tab" t-att-class="acc.id === state.activeTabId ? 'tab active' : 'tab'" 
+                            t-att-data-email="acc.email"
                             t-on-click="() => this.switchTab(acc.id)">
-                            <i class="fa fa-inbox"></i> <t t-esc="acc.email"/>
+                            <i class="fa fa-inbox"></i> 
+                            <t t-esc="acc.email"/>
                             <i class="fa fa-times close-tab"
-                                title="Đóng"
-                                style="margin-left: 8px; cursor: pointer;"
-                                t-on-click.stop="() => this.closeTab(acc.id)"></i>
+                            title="Đóng"
+                            style="margin-left: 8px; cursor: pointer;"
+                            t-on-click.stop="() => this.closeTab(acc.id)"></i>
                         </div>
                     </t>
-                    <div class="tab add-tab" t-on-click="() => this.addGmailAccount()">
 
-                        <i class="fa fa-plus"></i>
+                    <!-- Nút login Gmail -->
+                    <div class="tab login-tab" t-on-click="() => this.addGmailAccount()">
+                        <img src="/custom_gmail/static/src/img/gmail_1.svg" alt="Gmail" class="icon-svg"/>
+                    </div>
+
+                    <!-- Nút login Outlook -->
+                    <div class="tab login-tab" t-on-click="() => this.addOutlookAccount()">
+                        <img src="/custom_gmail/static/src/img/outlook.svg" alt="Outlook" class="icon-svg"/>
                     </div>
                 </div>
                     <div class="tab-content">
-                        
                             <div class="gmail-content" >
                                 <div class="content-container">
                                     <div class="email-list">
                                         <t t-set="activeAccount" t-value="state.accounts.find(acc => acc.id === state.activeTabId)"/>
                                         <t t-set="activeEmail" t-value="activeAccount ? activeAccount.email : ''"/>
-                                        <t t-set="activeMessages" t-value="getPaginatedMessages(activeEmail)"/>
-                                        <t t-set="pagination" t-value="getPaginationInfo(activeEmail)"/>
-                                        <t t-set="messages" t-value="state.pagination.messages"/>
-                                        <t t-if="state.loading">
-                                            <div class="loading-state">
-                                                <i class="fa fa-spinner fa-spin"></i> Đang tải thư...
-                                            </div>
-                                        </t>
-                                        
+                                        <t t-set="activeMessages" t-value="(state.messagesByEmail[activeEmail]) or []"/>
+
                                         <t t-foreach="activeMessages" t-as="msg" t-key="msg.id">
                                             
                                             <div class="email-item"
@@ -249,36 +250,7 @@ export default xml`
                                             </div>
                                                 
                                         </t>
-                                        <div class="pagination-controls toolbar-pagination">
-                                            <t t-set="pagination" t-value="getPaginationInfo(getActiveEmail())"/>
-                                            <span class="pagination-info">
-                                                <t t-esc="pagination.start"/>–<t t-esc="pagination.end"/> of <t t-esc="pagination.total"/>
-                                            </span>
-
-                                            <!-- Nút Previous -->
-                                            <button
-                                                t-on-click="prevPage"
-                                                t-att-disabled="!state.pagination.previousPageToken"
-                                                class="pagination-btn"
-                                                title="Previous page"
-                                            >
-                                                <i class="fa fa-chevron-left"></i>
-                                            </button>
-
-                                            <!-- Nút Next -->
-                                            <button
-                                                t-on-click="nextPage"
-                                                t-att-disabled="!state.pagination.nextPageToken"
-                                                class="pagination-btn"
-                                                title="Next page"
-                                            >
-                                                <i class="fa fa-chevron-right"></i>
-                                            </button>
-                                        </div>
-
-
                                     </div>
-
 
                                     <div class="email-detail">
                                         <t t-if="state.selectedMessage">
@@ -320,7 +292,7 @@ export default xml`
                                                         </div>
 
                                                         <div class="message-content" t-att-style="threadMsg.collapsed ? 'display: none;' : 'display: block;'">
-                                                            <t t-raw="threadMsg.body"/>
+                                                            <t t-esc="threadMsg.body"/>
                                                         </div>
                                                         
                                                         <div class="email-attachments" t-if="threadMsg.attachments and threadMsg.attachments.length">

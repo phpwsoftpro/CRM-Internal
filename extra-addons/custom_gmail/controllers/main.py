@@ -1,6 +1,7 @@
 from odoo import http
 from odoo.http import request
 
+
 class GmailSyncController(http.Controller):
 
     # @http.route('/custom_gmail/gmail_inbox', type='http', auth='user', website=True)
@@ -14,7 +15,20 @@ class GmailSyncController(http.Controller):
     #         'subject': message.subject or "No Subject",
     #         'body': message.body or "No Content",
     #     }
-    @http.route('/gmail/user_email', auth='user', type='json')
+    @http.route("/gmail/user_email", auth="user", type="json")
     def gmail_user_email(self):
-        email = request.env['ir.config_parameter'].sudo().get_param('gmail_authenticated_email')
-        return {'email': email or ''}
+        gmail_email = (
+            request.env["ir.config_parameter"]
+            .sudo()
+            .get_param("gmail_authenticated_email")
+        )
+        return {"gmail_email": gmail_email or ""}
+
+    @http.route("/outlook/user_email", auth="user", type="json")
+    def outlook_user_email(self):
+        outlook_email = (
+            request.env["ir.config_parameter"]
+            .sudo()
+            .get_param("outlook_authenticated_email")
+        )
+        return {"outlook_email": outlook_email or ""}
