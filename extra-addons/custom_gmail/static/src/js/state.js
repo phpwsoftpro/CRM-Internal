@@ -8,7 +8,7 @@ export function initialState() {
         email: "",
         selectedAccount: null,
         selectedMessage: null,
-        currentThread: []                                 ,
+        currentThread: [],
         messages: [],
         threads: {},
         showComposeModal: false,
@@ -16,6 +16,5 @@ export function initialState() {
         showDropdownVertical: false,
         showAccountDropdown: false,
         showAccounts: false,
-        activeFolder: 'INBOX',
     });
 }

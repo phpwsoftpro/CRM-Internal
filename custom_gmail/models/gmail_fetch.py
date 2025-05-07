@@ -53,11 +53,10 @@ class GmailFetch(models.Model):
         _logger.debug("Redirecting to Google's OAuth2 consent screen.")
         config = self.get_google_config()
 
-        scope = " ".join([
-            "https://www.googleapis.com/auth/gmail.readonly",
-            "https://www.googleapis.com/auth/gmail.send",
-            "https://mail.google.com",
-            ])
+        scope = (
+            "https://www.googleapis.com/auth/gmail.readonly "
+            "https://www.googleapis.com/auth/gmail.send"
+        )
 
         # ✅ Bắt buộc Google hiện lại cửa sổ chọn tài khoản + cấp refresh token mới
         auth_url = (
@@ -212,8 +211,6 @@ class GmailFetch(models.Model):
                     "model": "gmail.account",
                     "res_id": account.id,
                     "is_gmail": True,
-                    "gmail_account_id": account.id,
-
                 }
             )
 
@@ -326,8 +323,6 @@ class GmailFetch(models.Model):
                         "email_cc": cc,
                         "thread_id": thread_id,
                         "message_id": message_id,
-                        "gmail_account_id": account.id
-
                     }
                 )
 
