@@ -1,5 +1,5 @@
 import logging
-import msal
+import msal 
 import requests
 from datetime import datetime, timedelta
 from odoo import models, fields, api
