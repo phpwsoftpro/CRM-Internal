@@ -255,12 +255,10 @@
 
 .email-actions {
     display: flex;
-
-    gap: 15px; 
+    gap: 10px;
     align-items: center;
-    justify-content: flex-end;
-
-
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
 }
 
 /* Email Info */
@@ -299,7 +297,9 @@
 }
 
 /* Actions */
-
+.email-item:hover .email-actions {
+    opacity: 1;
+}
 
 .icon:hover {
     color: #1a73e8;
@@ -340,9 +340,10 @@
     color: gray;
 }
 
-.email-star-actions{
-    
-
+.email-star-actions {
+    position: absolute;
+    top: 51px;
+    right: 6px;
 }
 
 .email-star.starred {
@@ -386,10 +387,12 @@
     background-color: rgba(0, 0, 0, 0.1);
 }
 
-.icon-btn-reload, .icon-btn-option, .dropdown-icon, .icon-btn-delete, .icon-btn-option-selected, .icon-btn-read, .icon-btn-move {
-
+.icon-btn-reload,
+.icon-btn-option,
+.dropdown-icon {
     background: none;
     border: none;
+
 }
 
 .dropdown-icon {
@@ -405,8 +408,8 @@
     font-size: 15px;
 }
 
-.icon-btn-reload:hover,  .icon-btn-option:hover, .icon-btn-delete:hover, .icon-btn-option-selected:hover, .icon-btn-read:hover, .icon-btn-move:hover {
-
+.icon-btn-reload:hover,
+.icon-btn-option:hover {
     border-radius: 50%;
     background-color: #ddd;
 }
@@ -416,25 +419,6 @@
     top: 110px;
     font-size: 15px;
     left: 172px;
-}
-
-.icon-btn-delete {
-    position: absolute;
-    top: 110px;
-    font-size: 15px;
-    left: 172px;
-}
-.icon-btn-read{
-    position: absolute;
-    top: 110px;
-    font-size: 14px;
-    left: 218px;
-}
-.icon-btn-move{
-    position: absolute;
-    top: 115px;
-    font-size: 6px;
-    left: 264px;
 }
 
 .icon-btn:hover {
@@ -1109,38 +1093,4 @@
 
 .toggle-message:hover {
     text-decoration: underline;
-}
-
-.icon-btn-option-selected{
-    position: absolute;
-    top: 110px;
-    font-size: 15px;
-    left: 310px;
-}
-.email-delete-actions, .email-read-actions, .email-move-actions {
-    display: none;
-}
-.email-item:hover .email-delete-actions {
-    display: block;
-}
-.email-item:hover .email-move-actions {
-    display: block;
-}
-.email-item:hover .email-read-actions {
-    display: block;
-}
-.email-move{
-    font-size:8px ;
-    font-weight: normal;
-    color: #808080;
-}
-.email-delete{
-    font-size: 15px;
-    color: #808080;
-}
-.email-read{
-    color: #808080;
-}
-.email-trashed{
-    opacity: 0;
 }

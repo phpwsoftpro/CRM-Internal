@@ -17,7 +17,7 @@ class GmailAuthController(Controller):
     def gmail_auth_start(self, **kw):
         _logger.info("🔐 Gmail OAuth flow started from /gmail/auth/start")
         config = request.env["mail.message"].sudo().get_google_config()
-        scope = "openid email https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://mail.google.com"
+        scope = "openid email https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send"
         params = {
             "client_id": config["client_id"],
             "redirect_uri": config["redirect_uri"],
