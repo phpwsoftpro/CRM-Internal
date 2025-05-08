@@ -258,7 +258,7 @@ def send_email_with_gmail_api(
 
     body = {"raw": raw_message}
     if thread_id:
-        body["threadId"] = (thread_id,)
+        body["threadId"] = thread_id
 
     response = requests.post(url, headers=api_headers, json=body)
     _logger.info(

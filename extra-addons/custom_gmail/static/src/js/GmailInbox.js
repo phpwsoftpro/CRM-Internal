@@ -111,7 +111,7 @@ export class GmailInbox extends Component {
     
     async loadOutlookMessages(email) {
         const res = await rpc("/outlook/messages");
-        console.log("📬 Outlook messages res:", res);
+        // console.log("📬 Outlook messages res:", res);
         if (res.status === "ok") {
             const messages = res.messages.map((msg) => ({ ...msg, type: "outlook" }));
             this.state.messagesByEmail[email] = messages;
@@ -173,14 +173,14 @@ export class GmailInbox extends Component {
         this.state.currentThread = Array.isArray(thread) && thread.length ? thread : [msg];
     
         // ✅ Log để debug
-        console.log("💬 Clicked message:", msg);
+        // console.log("💬 Clicked message:", msg);
     
         // ✅ Nếu là Outlook và body chưa có
         if (
             (msg.type === "outlook" || (msg.from && msg.from.includes("@outlook"))) &&
             (!msg.body || msg.body === "No Content")
         ) {
-            console.log("📩 Fetching full body for Outlook:", msg.id);
+            // console.log("📩 Fetching full body for Outlook:", msg.id);
             try {
                 const res = await rpc("/outlook/message_detail", { message_id: msg.id });
                 if (res.status === "ok") {
@@ -340,7 +340,7 @@ export class GmailInbox extends Component {
                     });
     
                     const json = await res.json();
-                    console.log("📬 Outlook current_user_info:", json);
+                    // console.log("📬 Outlook current_user_info:", json);
     
                     if (json.result?.status === "success" && typeof json.result.email === "string") {
                         const email = json.result.email;

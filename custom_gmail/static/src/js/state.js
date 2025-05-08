@@ -10,6 +10,7 @@ export function initialState() {
         selectedMessage: null,
         currentThread: [],
         messages: [],
+        messagesByEmail: {}, // ✅ THÊM DÒNG NÀY
         threads: {},
         showComposeModal: false,
         showDropdown: false,

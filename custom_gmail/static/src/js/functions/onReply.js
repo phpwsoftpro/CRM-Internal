@@ -1,10 +1,14 @@
 export function onReply(ev, selectedMessage) {
     ev.stopPropagation();
 
-    const message = selectedMessage.thread_id ? selectedMessage : "";
+    if (!selectedMessage || !selectedMessage.thread_id) {
+        console.warn("❌ selectedMessage hoặc thread_id không hợp lệ:", selectedMessage);
+        return;
+    }
+
     this.openComposeModal("reply", {
-        ...message,
-        thread_id: message.thread_id, 
-        message_id: message.message_id,
+        ...selectedMessage,
+        thread_id: selectedMessage.thread_id,
+        message_id: selectedMessage.message_id,
     });
 }
