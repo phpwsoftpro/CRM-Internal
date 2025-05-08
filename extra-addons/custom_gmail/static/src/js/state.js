@@ -8,7 +8,7 @@ export function initialState() {
         email: "",
         selectedAccount: null,
         selectedMessage: null,
-        currentThread: []                                 ,
+        currentThread: [],
         messages: [],
         messagesByEmail: {}, // ✅ THÊM DÒNG NÀY
         threads: {},
@@ -17,6 +17,5 @@ export function initialState() {
         showDropdownVertical: false,
         showAccountDropdown: false,
         showAccounts: false,
-        activeFolder: 'INBOX',
     });
 }

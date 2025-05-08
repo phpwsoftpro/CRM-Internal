@@ -31,7 +31,7 @@ export function toggleDropdownAccount() {
 
 export function toggleSelectAll(ev) {
     const isChecked = ev.target.checked;
-    this.state.pagination.messages.forEach(msg => {
+    this.state.messages.forEach(msg => {
         msg.selected = isChecked;
     });
     this.render();

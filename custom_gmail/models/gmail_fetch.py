@@ -78,11 +78,10 @@ class GmailFetch(models.Model):
         _logger.debug("Redirecting to Google's OAuth2 consent screen.")
         config = self.get_google_config()
 
-        scope = " ".join([
-            "https://www.googleapis.com/auth/gmail.readonly",
-            "https://www.googleapis.com/auth/gmail.send",
-            "https://mail.google.com",
-            ])
+        scope = (
+            "https://www.googleapis.com/auth/gmail.readonly "
+            "https://www.googleapis.com/auth/gmail.send"
+        )
 
         # ✅ Bắt buộc Google hiện lại cửa sổ chọn tài khoản + cấp refresh token mới
         auth_url = (
@@ -218,6 +217,67 @@ class GmailFetch(models.Model):
             self.search([("create_date", ">=", thirty_days_ago)]).mapped("gmail_id")
         )
 
+        headers = {"Authorization": f"Bearer {account.access_token}"}
+        response = requests.get(
+            "https://www.googleapis.com/gmail/v1/users/me/messages",
+            headers=headers,
+            params={"maxResults": 10},
+        )
+        for m in response.json().get("messages", []):
+            msg_detail = requests.get(
+                f"https://www.googleapis.com/gmail/v1/users/me/messages/{m['id']}",
+                headers=headers,
+                params={"format": "full"},
+            ).json()
+
+            subject = ""
+            headers_list = msg_detail.get("payload", {}).get("headers", [])
+            for h in headers_list:
+                if h["name"] == "Subject":
+                    subject = h["value"]
+
+            self.create(
+                {
+                    "subject": subject,
+                    "body": "<i>Mail body (chưa parse)</i>",
+                    "date": datetime.utcnow(),
+                    "author_id": account.user_id.partner_id.id,
+                    "model": "gmail.account",
+                    "res_id": account.id,
+                    "is_gmail": True,
+                }
+            )
+
+        def replace_cid_links(html_body, attachments):
+
+            try:
+                tree = html.fromstring(html_body)
+                for img in tree.xpath("//img"):
+                    src = img.get("src", "")
+                    if src.startswith("cid:"):
+                        cid_name = src.replace("cid:", "").strip("<>")
+                        for att in attachments:
+                            # So sánh nhiều khả năng của CID
+                            possible_cids = [
+                                (att.description or "").strip("<>"),
+                                (att.description or "").split("@")[0],
+                                att.name or "",
+                            ]
+                            if cid_name in possible_cids:
+                                img.set("src", f"/web/content/{att.id}")
+                                _logger.debug(
+                                    "🔁 Replaced CID %s → /web/content/%s",
+                                    cid_name,
+                                    att.id,
+                                )
+                                break  # Tìm được là thoát, tránh lặp
+                return html.tostring(tree, encoding="unicode")
+            except Exception as e:
+                _logger.warning("⚠️ CID replacement failed: %s", e)
+                return html_body
+
+        processed_messages = []
+
         while fetched_count < max_messages:
             # ✅ Thêm buffer 5 phút để tránh miss mail
             if account.last_fetch_at:
@@ -305,8 +365,6 @@ class GmailFetch(models.Model):
                         "email_cc": cc,
                         "thread_id": thread_id,
                         "message_id": message_id,
-                        "gmail_account_id": account.id
-
                     }
                 )
 
