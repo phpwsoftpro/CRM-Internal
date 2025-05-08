@@ -119,23 +119,83 @@ class OutlookAuthController(http.Controller):
     def outlook_messages(self, **kw):
         user = request.env.user.sudo()
         access_token = user.outlook_access_token
-        if not access_token:
-            return {"status": "error", "message": "No Outlook access token found"}
+        refresh_token = user.outlook_refresh_token
+        client_id = (
+            request.env["ir.config_parameter"].sudo().get_param("outlook_client_id")
+        )
+        client_secret = (
+            request.env["ir.config_parameter"].sudo().get_param("outlook_client_secret")
+        )
+        redirect_uri = (
+            request.env["ir.config_parameter"].sudo().get_param("outlook_redirect_uri")
+        )
 
-        url = "https://graph.microsoft.com/v1.0/me/messages?$orderby=receivedDateTime desc&$top=20"
-        headers = {"Authorization": f"Bearer {access_token}"}
-        response = requests.get(url, headers=headers)
+        def fetch_messages(token):
+            url = "https://graph.microsoft.com/v1.0/me/messages?$orderby=receivedDateTime desc&$top=20"
+            headers = {"Authorization": f"Bearer {token}"}
+            res = requests.get(url, headers=headers)
+            return res
 
+        # 📨 Gọi lần đầu
+        response = fetch_messages(access_token)
+
+        # 🔁 Nếu token hết hạn, tự refresh
+        if response.status_code == 401 and refresh_token:
+            _logger.warning("🔄 Token hết hạn, đang refresh...")
+
+            token_resp = requests.post(
+                "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+                data={
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "grant_type": "refresh_token",
+                    "refresh_token": refresh_token,
+                    "redirect_uri": redirect_uri,
+                    "scope": "https://graph.microsoft.com/.default",
+                },
+            )
+
+            if token_resp.status_code == 200:
+                token_json = token_resp.json()
+                new_token = token_json.get("access_token")
+                new_refresh = token_json.get("refresh_token")
+
+                if new_token:
+                    # 🔒 Lưu lại token mới vào user
+                    user.write(
+                        {
+                            "outlook_access_token": new_token,
+                            "outlook_refresh_token": new_refresh
+                            or refresh_token,  # fallback nếu không trả refresh
+                        }
+                    )
+
+                    # 📨 Thử lại
+                    response = fetch_messages(new_token)
+                else:
+                    return {"status": "error", "message": "Không thể refresh token"}
+
+            else:
+                _logger.error(f"❌ Refresh token thất bại: {token_resp.text}")
+                return {
+                    "status": "error",
+                    "message": "Outlook token expired. Please log in again.",
+                }
+
+        # 🛑 Vẫn fail
         if response.status_code != 200:
             _logger.error(f"❌ Failed to fetch Outlook messages: {response.text}")
             return {"status": "error", "message": "Failed to fetch messages"}
 
+        # ✅ Thành công
         messages = response.json().get("value", [])
         return {
             "status": "ok",
             "messages": [
                 {
                     "id": msg["id"],
+                    "message_id": msg["internetMessageId"],
+                    "thread_id": msg["conversationId"],
                     "subject": msg["subject"],
                     "sender": msg.get("sender", {}).get("emailAddress", {}).get("name"),
                     "from": msg.get("from", {}).get("emailAddress", {}).get("address"),

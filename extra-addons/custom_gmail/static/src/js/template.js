@@ -239,7 +239,7 @@ export default xml`
                                         <div class="thread-message" t-att-class="{'current-message': threadMsg.id === state.selectedMessage.id, 'collapsed': threadMsg.collapsed}">
                                             <div class="message-header">
                                                 <div class="sender-info">
-                                                    <img class="sender-avatar" t-att-src="threadMsg.avatar || '/path/to/default-avatar.png'" alt="avatar" />
+                                                    <img class="sender-avatar" t-att-src="threadMsg.avatar || '/path/to/default-avatar.png' || ''" alt="avatar" />
                                                     <div class="sender-details">
                                                         <div class="sender-line">
                                                             <strong class="sender-name">
@@ -340,7 +340,7 @@ export default xml`
                                 </t>
                             </div>
                             <div class="detail-actions">
-                                <button class="action-btn reply" t-on-click="(ev) => this.onReply(ev, threadMsg)" style="margin-left: 60px;">
+                                <button class="action-btn reply" t-on-click="(ev) => this.onReply(ev, state.selectedMessage)" style="margin-left: 60px;">
                                     <i class="fa fa-reply"></i> Trả lời
                                 </button>
                                 <button class="action-btn reply-all" t-on-click="(ev) => this.onReplyAll(ev, state.selectedMessage)">
@@ -350,6 +350,7 @@ export default xml`
                                     <i class="fa fa-share"></i> Chuyển tiếp
                                 </button>
                             </div>
+
                         </t>
                         <t t-if="!state.selectedMessage">
                             <div class="no-message">
