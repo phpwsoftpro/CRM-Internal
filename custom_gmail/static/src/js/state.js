@@ -1,6 +1,6 @@
 /** @odoo-module **/
 import { useState } from "@odoo/owl";
-
+ 
 export function initialState() {
     return useState({
         accounts: [],
@@ -10,6 +10,7 @@ export function initialState() {
         selectedMessage: null,
         currentThread: []                                 ,
         messages: [],
+        messagesByEmail: {}, // ✅ THÊM DÒNG NÀY
         threads: {},
         showComposeModal: false,
         showDropdown: false,
