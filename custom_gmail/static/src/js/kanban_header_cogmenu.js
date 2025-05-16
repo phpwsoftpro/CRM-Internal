@@ -82,9 +82,10 @@ patch(KanbanHeader.prototype, {
 registry.category("kanban_header_config_items").add(
     "start_date_sort",
     {
-        label: "Sort by Deadline",
+        label: "Sort by Deadline Task",
         method: "dateDeadlineSort",
-        isVisible: ({ permissions }) => permissions.canEditAutomations,
+        isVisible: ({ permissions, props }) =>
+            permissions.canEditAutomations && props.list.model.config.resModel === "project.task",
         class: "o_column_test",
     },
     { sequence: 60 }

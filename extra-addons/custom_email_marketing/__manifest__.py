@@ -34,7 +34,7 @@
         "views/project_task_view.xml",
         "views/send_task_email_wizard_view.xml",
         "wizards/project_task_move_views.xml",
-        "views/mailing_mailtext_views.xml",
+        "views/mailing_list_views_inherit.xml",
     ],
     "installable": True,
     "application": True,
