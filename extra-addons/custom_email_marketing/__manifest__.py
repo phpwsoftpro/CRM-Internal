@@ -18,7 +18,7 @@
             "custom_email_marketing/static/src/css/custom.css",
             "custom_email_marketing/static/src/js/chatter_filter.js",
             "custom_email_marketing/static/src/js/chatter_button_order.js",
-            "custom_email_marketing/static/src/js/project_tab_inject.js",
+            "custom_email_marketing/static/src/js/notification_popup.js",
             # "custom_email_marketing/static/src/js/kanban_record.js",
             # "custom_email_marketing/static/src/js/kanban_column_sort.js",
         ],

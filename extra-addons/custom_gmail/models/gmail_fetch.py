@@ -347,14 +347,14 @@ class GmailFetch(models.Model):
                 else:
                     updated_body = body_html
 
-                self.env["mail.notification"].sudo().create(
-                    {
-                        "mail_message_id": created_message.id,
-                        "res_partner_id": self.env.user.partner_id.id,
-                        "notification_type": "inbox",
-                        "is_read": False,
-                    }
-                )
+                # self.env["mail.notification"].sudo().create(
+                #     {
+                #         "mail_message_id": created_message.id,
+                #         "res_partner_id": self.env.user.partner_id.id,
+                #         "notification_type": "inbox",
+                #         "is_read": False,
+                #     }
+                # )
 
                 processed_messages.append(
                     {

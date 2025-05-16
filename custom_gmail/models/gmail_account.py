@@ -11,3 +11,4 @@ class GmailAccount(models.Model):
     refresh_token = fields.Char("Refresh Token")
     token_expiry = fields.Datetime("Token Expiry")
     last_fetch_at = fields.Datetime(string="Last Fetch At")
+    gmail_authenticated_email = fields.Char("Gmail Authenticated Email")
