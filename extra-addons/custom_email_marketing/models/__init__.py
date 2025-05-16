@@ -11,6 +11,4 @@ from . import notification
 from . import mailing_contact
 from . import mailing_history
 from . import mailing_list_folder
-
-from . import mailing_mailing_inherit
-from . import mailing_mailtext
+from . import mailing_list_inherit
