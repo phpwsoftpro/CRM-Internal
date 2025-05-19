@@ -1,7 +1,8 @@
 /** @odoo-module **/
-import { Component, onMounted } from "@odoo/owl";
+import { Component, onMounted, onWillUnmount } from "@odoo/owl";
 import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
+import { useService } from "@web/core/utils/hooks";
 import { initCKEditor, loadCKEditor } from "./ckeditor";
 import { onForward, onReply, onReplyAll, onSendEmail, toggleStar } from "./functions/index";
 import { openComposeModal } from "./functions/openComposeModal";
@@ -59,10 +60,10 @@ export class GmailInbox extends Component {
         this.addGmailAccount = this._addGmailAccount;
         this.addOutlookAccount = this._addOutlookAccount;
         this.switchTab = this._switchTab.bind(this);
-    
+        
         this.state.messagesByEmail = {};
     
-        // 👇 Khôi phục tài khoản từ localStorage (nếu chưa có database)
+        // 🛑 Khôi phục từ localStorage (ban đầu)
         const savedAccounts = localStorage.getItem("gmail_accounts");
         if (savedAccounts) {
             this.state.accounts = JSON.parse(savedAccounts);
@@ -71,22 +72,56 @@ export class GmailInbox extends Component {
                 this.loadMessages(this.state.accounts[0].email);
             }
         }
-    
+
+        let busService = null;
+        try {
+            busService = useService("bus");
+        } catch (err) {
+            console.warn("⚠️ Service 'bus' is not available:", err);
+        }
+
+        if (busService && odoo.session_info?.uid) {
+            const channel = `gmail_mail_update_${odoo.session_info.uid}`;
+
+            onMounted(() => {
+                busService.addChannel(channel);
+
+                busService.onNotification(this, (notifications) => {
+                    for (const { channel: notifChannel, type, payload } of notifications) {
+                        if (notifChannel === channel) {
+                            console.log("📨 Gmail realtime update received:", payload);
+                            const acc = this.state.accounts.find(a => a.id === this.state.activeTabId);
+                            if (acc?.email) {
+                                this.loadMessages(acc.email);  // Hoặc this.onRefresh()
+                            }
+                        }
+                    }
+                });
+
+                this.onBusCleanup = () => {
+                    busService.deleteChannel(channel);
+                    busService.offNotification(this);
+                };
+            });
+
+            onWillUnmount(() => {
+                this.onBusCleanup?.();
+            });
+        }
+
+
+        // 🔁 Mount chính: Load account
         onMounted(async () => {
             const currentUserId = await getCurrentUserId();
-    
-            // Fetch accounts từ server
             const gmailAccounts = await rpc("/gmail/my_accounts");
             const outlookAccounts = await rpc("/outlook/my_accounts");
-    
             const mergedAccounts = [...gmailAccounts, ...outlookAccounts];
-    
+
             if (mergedAccounts.length > 0) {
                 this.state.accounts = mergedAccounts;
                 this.state.activeTabId = mergedAccounts[0].id;
                 this.loadMessages(mergedAccounts[0].email);
             } else {
-                // Nếu không có thì fallback localStorage
                 const savedAccounts = localStorage.getItem(`gmail_accounts_user_${currentUserId}`);
                 if (savedAccounts) {
                     this.state.accounts = JSON.parse(savedAccounts);
@@ -96,10 +131,21 @@ export class GmailInbox extends Component {
                     }
                 }
             }
-    
-            // Gọi các hàm load authenticated email
+
+            // Xác thực email
             await this.loadAuthenticatedEmail();
             await this.loadOutlookAuthenticatedEmail();
+
+            // Ping định kỳ
+            setInterval(() => {
+                if (!document.hidden) {
+                    for (const account of this.state.accounts) {
+                        if (account.type === "gmail") {
+                            rpc("/gmail/session/ping", { account_id: parseInt(account.id) });
+                        }
+                    }
+                }
+            }, 30000);
         });
     }
     
@@ -396,6 +442,7 @@ export class GmailInbox extends Component {
     closeTab = async (accountId) => {
         const currentUserId = await getCurrentUserId();
     
+        // Tìm account trong state
         const acc = this.state.accounts.find(a => a.id === accountId);
         if (!acc) {
             console.warn(`⚠️ Account ID ${accountId} not found.`);
@@ -403,19 +450,24 @@ export class GmailInbox extends Component {
         }
     
         try {
+            // Ép accountId về số nguyên để tránh lỗi truy vấn
+            const numericAccountId = parseInt(accountId);
+    
             if (acc.type === 'gmail') {
-                await rpc("/gmail/delete_account", { account_id: accountId });
+                await rpc("/gmail/delete_account", { account_id: numericAccountId });
             } else if (acc.type === 'outlook') {
-                await rpc("/outlook/delete_account", { account_id: accountId });
+                await rpc("/outlook/delete_account", { account_id: numericAccountId });
             }
         } catch (error) {
             console.error("❌ Error deleting account:", error);
         }
     
+        // Xoá account khỏi danh sách tab (state)
         const index = this.state.accounts.findIndex(a => a.id === accountId);
         if (index !== -1) {
             this.state.accounts.splice(index, 1);
     
+            // Nếu tab active vừa bị đóng → chuyển sang tab đầu
             if (this.state.activeTabId === accountId) {
                 const firstAccount = this.state.accounts[0];
                 this.state.activeTabId = firstAccount ? firstAccount.id : null;
@@ -426,14 +478,21 @@ export class GmailInbox extends Component {
                 }
             }
     
-            // ✅ Update localStorage chính xác theo user
-            localStorage.setItem(
-                `gmail_accounts_user_${currentUserId}`,
-                JSON.stringify(this.state.accounts)
-            );
+            // ✅ Cập nhật lại localStorage: lọc bỏ account bị xoá
+            const savedKey = `gmail_accounts_user_${currentUserId}`;
+            const savedAccounts = JSON.parse(localStorage.getItem(savedKey)) || [];
+            const updatedAccounts = savedAccounts.filter(acc => acc.id !== accountId);
+            localStorage.setItem(savedKey, JSON.stringify(updatedAccounts));
         }
-    };  
-}
+    
+        // ✅ Nếu là Gmail ping đang bật → clear interval
+        if (this.gmailPingIntervalId) {
+            clearInterval(this.gmailPingIntervalId);
+            this.gmailPingIntervalId = null;
+        }
+    };
+    
+}    
 
 GmailInbox.template = template;
 registry.category("actions").add("gmail_inbox_ui", GmailInbox);

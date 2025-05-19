@@ -10,6 +10,8 @@ import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.header import Header
+from odoo import http, fields, api
+import time
 
 
 class GmailInboxController(http.Controller):
@@ -159,6 +161,7 @@ class GmailInboxController(http.Controller):
             .search(
                 [
                     ("user_id", "=", request.env.user.id),
+                    ("access_token", "!=", False),  # ✅ Chỉ lấy account còn token
                 ]
             )
         )
@@ -174,6 +177,29 @@ class GmailInboxController(http.Controller):
             for acc in accounts
         ]
 
+    @http.route("/gmail/session/ping", type="json", auth="user")
+    def ping_session(self, account_id=None):
+        account = None
+        if account_id:
+            account = request.env["gmail.account"].sudo().browse(account_id)
+        else:
+            account = (
+                request.env["gmail.account"]
+                .sudo()
+                .search([("user_id", "=", request.uid)], limit=1)
+            )
+
+        if not account:
+            return {"status": "no_account"}
+
+        try:
+            account_env = request.env["gmail.account"].sudo()
+            account_env.update_last_ui_ping_safe(account.id, request.uid)
+            return {"status": "ok"}
+        except Exception as e:
+            _logger.warning("❌ Ping thất bại: %s", e)
+            return {"status": "error", "message": str(e)}
+
     @http.route("/gmail/delete_account", type="json", auth="user", csrf=False)
     def delete_account(self, account_id):
         account = (
@@ -188,10 +214,48 @@ class GmailInboxController(http.Controller):
             )
         )
 
-        if account:
-            account.unlink()
-            return {"status": "deleted"}
-        return {"status": "not_found"}
+        if not account:
+            return {"status": "not_found"}
+
+        # Xoá các email & attachment (tuỳ theo bạn muốn giữ hay không)
+        messages = (
+            request.env["mail.message"]
+            .sudo()
+            .search(
+                [
+                    ("model", "=", "gmail.account"),
+                    ("res_id", "=", account.id),
+                    ("is_gmail", "=", True),
+                ]
+            )
+        )
+
+        attachments = (
+            request.env["ir.attachment"]
+            .sudo()
+            .search(
+                [("res_model", "=", "mail.message"), ("res_id", "in", messages.ids)]
+            )
+        )
+        attachments.unlink()
+
+        request.env["mail.notification"].sudo().search(
+            [("mail_message_id", "in", messages.ids)]
+        ).unlink()
+
+        messages.unlink()
+
+        # ⚠️ Không xoá tài khoản, chỉ xoá token
+        account.write(
+            {
+                "access_token": False,
+                "refresh_token": False,
+                "token_expiry": False,
+                "last_ui_ping": False,
+            }
+        )
+
+        return {"status": "token_removed"}
 
 
 class UploadController(http.Controller):

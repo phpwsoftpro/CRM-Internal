@@ -6,6 +6,8 @@ import base64
 from lxml import html
 import mimetypes
 from datetime import datetime, timedelta
+from email.utils import parsedate_to_datetime
+from odoo.addons.bus.models.bus import ImBus
 
 _logger = logging.getLogger(__name__)
 
@@ -193,15 +195,10 @@ class GmailFetch(models.Model):
         return "\n".join(html_parts) if html_parts else ""
 
     @api.model
-    def fetch_gmail_for_account(self, account_id):
-        account = self.env["gmail.account"].sudo().browse(account_id)
-        if not account:
-            return
-
-        # ✅ Kiểm tra token hết hạn → refresh nếu cần
+    def fetch_gmail_for_account(self, account):
         if account.token_expiry and account.token_expiry < datetime.utcnow():
             _logger.info(f"🔄 Token expired for {account.email}, refreshing...")
-            success = self.env["gmail.account"].refresh_access_token(account)
+            success = self.env["gmail.account"].sudo().refresh_access_token(account)
             if not success:
                 raise ValueError(f"❌ Failed to refresh token for {account.email}")
 
@@ -211,81 +208,36 @@ class GmailFetch(models.Model):
         next_page_token = None
         base_url = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
 
-        # ✅ Lấy danh sách gmail_id đã sync trong 30 ngày
-        thirty_days_ago = fields.Datetime.to_string(datetime.now() - timedelta(days=30))
-        existing_gmail_ids = set(
-            self.search([("create_date", ">=", thirty_days_ago)]).mapped("gmail_id")
+        sync_state = (
+            self.env["gmail.account.sync.state"]
+            .sudo()
+            .search([("gmail_account_id", "=", account.id)], limit=1)
         )
 
-        headers = {"Authorization": f"Bearer {account.access_token}"}
-        response = requests.get(
-            "https://www.googleapis.com/gmail/v1/users/me/messages",
-            headers=headers,
-            params={"maxResults": 10},
-        )
-        for m in response.json().get("messages", []):
-            msg_detail = requests.get(
-                f"https://www.googleapis.com/gmail/v1/users/me/messages/{m['id']}",
-                headers=headers,
-                params={"format": "full"},
-            ).json()
-
-            subject = ""
-            headers_list = msg_detail.get("payload", {}).get("headers", [])
-            for h in headers_list:
-                if h["name"] == "Subject":
-                    subject = h["value"]
-
-            self.create(
-                {
-                    "subject": subject,
-                    "body": "<i>Mail body (chưa parse)</i>",
-                    "date": datetime.utcnow(),
-                    "author_id": account.user_id.partner_id.id,
-                    "model": "gmail.account",
-                    "res_id": account.id,
-                    "is_gmail": True,
-                }
+        if not sync_state:
+            sync_state = (
+                self.env["gmail.account.sync.state"]
+                .sudo()
+                .create({"gmail_account_id": account.id})
             )
 
-        def replace_cid_links(html_body, attachments):
+        if sync_state.last_fetch_at:
+            after_ts = int(sync_state.last_fetch_at.timestamp()) - 300
+        else:
+            after_ts = int((datetime.utcnow() - timedelta(days=30)).timestamp())
 
-            try:
-                tree = html.fromstring(html_body)
-                for img in tree.xpath("//img"):
-                    src = img.get("src", "")
-                    if src.startswith("cid:"):
-                        cid_name = src.replace("cid:", "").strip("<>")
-                        for att in attachments:
-                            # So sánh nhiều khả năng của CID
-                            possible_cids = [
-                                (att.description or "").strip("<>"),
-                                (att.description or "").split("@")[0],
-                                att.name or "",
-                            ]
-                            if cid_name in possible_cids:
-                                img.set("src", f"/web/content/{att.id}")
-                                _logger.debug(
-                                    "🔁 Replaced CID %s → /web/content/%s",
-                                    cid_name,
-                                    att.id,
-                                )
-                                break  # Tìm được là thoát, tránh lặp
-                return html.tostring(tree, encoding="unicode")
-            except Exception as e:
-                _logger.warning("⚠️ CID replacement failed: %s", e)
-                return html_body
-
-        processed_messages = []
+        existing_gmail_ids = set(
+            self.search(
+                [
+                    ("gmail_id", "!=", False),
+                    ("author_id", "=", account.user_id.partner_id.id),
+                    ("create_date", ">", datetime.utcnow() - timedelta(days=30)),
+                ]
+            ).mapped("gmail_id")
+        )
 
         while fetched_count < max_messages:
-            # ✅ Thêm buffer 5 phút để tránh miss mail
-            if account.last_fetch_at:
-                after_ts = int(account.last_fetch_at.timestamp()) - 300  # trừ 5 phút
-            else:
-                after_ts = int((datetime.utcnow() - timedelta(days=30)).timestamp())
             params = {"maxResults": 15}
-            # params = {"maxResults": 15, "q": f"after:{after_ts}"}
             if next_page_token:
                 params["pageToken"] = next_page_token
 
@@ -299,10 +251,6 @@ class GmailFetch(models.Model):
             messages = response.json().get("messages", [])
             next_page_token = response.json().get("nextPageToken")
 
-            _logger.debug(
-                "📨 Gmail API trả về message IDs: %s", [m.get("id") for m in messages]
-            )
-
             if not messages:
                 break
 
@@ -311,14 +259,10 @@ class GmailFetch(models.Model):
                     break
 
                 gmail_id = msg.get("id")
-                thread_id = msg.get("threadId")
-
-                # ✅ Check tồn tại → bỏ qua (KHÔNG unlink)
                 if gmail_id in existing_gmail_ids:
                     _logger.debug("🔁 Đã tồn tại trong DB, bỏ qua: %s", gmail_id)
                     continue
 
-                # ✅ Fetch chi tiết message
                 detail_url = f"{base_url}/{gmail_id}?format=full"
                 message_response = requests.get(detail_url, headers=headers)
                 if message_response.status_code != 200:
@@ -328,7 +272,6 @@ class GmailFetch(models.Model):
                 msg_data = message_response.json()
                 payload = msg_data.get("payload", {})
 
-                # Extract headers
                 def extract_header(payload, header_name):
                     headers = payload.get("headers", [])
                     for h in headers:
@@ -345,13 +288,21 @@ class GmailFetch(models.Model):
                 receiver = extract_header(payload, "To")
                 cc = extract_header(payload, "Cc")
                 raw_date = extract_header(payload, "Date")
-                date_received = self.parse_date(raw_date) if raw_date else None
+                try:
+                    date_received = (
+                        parsedate_to_datetime(raw_date).replace(tzinfo=None)
+                        if raw_date
+                        else None
+                    )
+                except Exception as e:
+                    _logger.warning("⚠️ Parse date thất bại: %s (%s)", raw_date, e)
+                    date_received = None
                 raw_message_id = extract_header(payload, "Message-Id")
                 message_id = raw_message_id.strip("<>") if raw_message_id else ""
 
-                body_html = self.extract_all_html_parts(payload)
+                body_html = self.env["mail.message"].extract_all_html_parts(payload)
 
-                created_message = self.create(
+                message = self.env["mail.message"].create(
                     {
                         "gmail_id": gmail_id,
                         "is_gmail": True,
@@ -359,45 +310,21 @@ class GmailFetch(models.Model):
                         "subject": subject,
                         "date_received": date_received,
                         "message_type": "email",
-                        "author_id": self.env.user.partner_id.id,
+                        "author_id": account.user_id.partner_id.id,
                         "email_sender": sender,
                         "email_receiver": receiver,
                         "email_cc": cc,
-                        "thread_id": thread_id,
+                        "thread_id": msg.get("threadId"),
                         "message_id": message_id,
                     }
                 )
 
-                # ✅ Lưu attachment
-                attachments = self.save_attachments(
-                    payload, gmail_id, created_message.id, headers
+                attachments = self.env["mail.message"].save_attachments(
+                    payload, gmail_id, message.id, headers
                 )
-                attachment_list = [
-                    {
-                        "id": att.id,
-                        "name": att.name,
-                        "url": f"/web/content/{att.id}?download=true",
-                        "mimetype": att.mimetype,
-                    }
-                    for att in attachments
-                ]
-
-                # ✅ Replace inline CID → gọi function trực tiếp
                 if attachments and "cid:" in body_html:
                     updated_body = replace_cid_links(body_html, attachments)
-                    created_message.body = updated_body
-                else:
-                    updated_body = body_html
-
-                # ✅ Tạo notification
-                self.env["mail.notification"].sudo().create(
-                    {
-                        "mail_message_id": created_message.id,
-                        "res_partner_id": self.env.user.partner_id.id,
-                        "notification_type": "inbox",
-                        "is_read": False,
-                    }
-                )
+                    message.body = updated_body
 
                 fetched_count += 1
                 _logger.info("📩 Synced Gmail message: %s", subject)
@@ -405,6 +332,37 @@ class GmailFetch(models.Model):
             if not next_page_token or fetched_count >= max_messages:
                 break
 
+        try:
+            synced_ids = existing_gmail_ids.union(
+                set(
+                    self.env["mail.message"]
+                    .search(
+                        [
+                            ("is_gmail", "=", True),
+                            ("author_id", "=", account.user_id.partner_id.id),
+                            ("create_date", ">=", datetime.now() - timedelta(days=30)),
+                        ]
+                    )
+                    .mapped("gmail_id")
+                )
+            )
+
+            sync_state.write(
+                {
+                    "last_fetch_at": fields.Datetime.now(),
+                    "gmail_ids_30_days": json.dumps(list(synced_ids)),
+                }
+            )
+        except Exception as e:
+            _logger.warning("⚠️ Không thể cập nhật sync state: %s", e)
+        # try:
+        #     ImBus._sendone(
+        #         f"gmail_mail_update_{account.user_id.id}",  # channel name
+        #         "notification",  # notification_type (required)
+        #         {"new": True, "count": fetched_count},  # message payload
+        #     )
+        # except Exception as e:
+        #     _logger.warning("⚠️ Gửi bus thất bại (ImBus): %s", e)
+
         _logger.info("✅ Đồng bộ Gmail hoàn tất (%s messages)", fetched_count)
-        account.last_fetch_at = fields.Datetime.now()
         return True
