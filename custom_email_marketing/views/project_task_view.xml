@@ -103,6 +103,25 @@
         </field>
     </record>
 
+    <record id="view_task_kanban_inherit_start_date" model="ir.ui.view">
+        <field name="name">project.task.kanban.inherit.start_date</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_kanban"/>
+        <field name="arch" type="xml">
+            <!-- Thêm field để nó được load -->
+            <xpath expr="//kanban" position="inside">
+                <field name="start_date_now"/>
+            </xpath>
+
+            <!-- Hiển thị giá trị trên template -->
+            <xpath expr="//t[@t-name='card']/main" position="inside">
+                <div class="text-muted mt-1" t-if="record.start_date_now.value">
+                    <i class="fa fa-clock-o me-1"/> Start Date Now: <t t-esc="record.start_date_now.value"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
     <!-- thêm start date vào form task -->
     <odoo>
         <record id="view_project_task_form_inherit_start_date" model="ir.ui.view">
