@@ -6,8 +6,9 @@
     "author": "Your Name",
     "website": "https://crm2.wsoftpro.com",
     "category": "Communication",
-    "depends": ["mail"],
+    "depends": ["mail", "bus"],
     "data": [
+        "security/ir.model.access.csv",
         "views/discuss_view.xml",
         "data/ir_cron.xml",
     ],
