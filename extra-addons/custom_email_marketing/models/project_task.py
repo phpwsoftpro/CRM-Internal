@@ -11,6 +11,8 @@ class ProjectTask(models.Model):
 
     start_date = fields.Datetime(string="Start Date")
 
+    start_date_now = fields.Datetime(string="Start Date", default=lambda self: fields.Datetime.now())
+
     remaining_days = fields.Char(
         string="Remaining Time", compute="_compute_remaining_days"
     )
