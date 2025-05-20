@@ -9,9 +9,13 @@ _logger = logging.getLogger(__name__)
 class ProjectTask(models.Model):
     _inherit = "project.task"
 
-    start_date = fields.Datetime(string="Start Date")
+    start_date = fields.Datetime(string="Start Date",default=lambda self: datetime.now())
 
-    start_date_now = fields.Datetime(string="Start Date", default=lambda self: fields.Datetime.now())
+    start_date_now = fields.Datetime(string="Start Date Now")
+    # start_date_n = fields.Datetime(string="Start Date Now")
+
+
+
 
     remaining_days = fields.Char(
         string="Remaining Time", compute="_compute_remaining_days"
@@ -29,6 +33,10 @@ class ProjectTask(models.Model):
         string="Connected Tasks",
     )
     cover_image = fields.Binary("Cover Image")
+
+    def write(self, vals):
+        print("fefrf")
+        return super().write(vals)
 
     @api.onchange("start_date")
     def _onchange_start_date(self):
@@ -194,3 +202,4 @@ class ProjectTask(models.Model):
             "url": "/web#id=%d&model=project.task&view_type=form" % self.id,
             "target": "new",
         }
+
