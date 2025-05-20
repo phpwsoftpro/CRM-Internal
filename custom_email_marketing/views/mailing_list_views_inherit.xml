@@ -26,4 +26,24 @@
             </field>
           </record>
     </data>
+
+    <record id="mailing_list_view_search_inherit_start_date" model="ir.ui.view">
+        <field name="name">mailing.list.search.inherit.start_date</field>
+        <field name="model">mailing.list</field>
+        <field name="inherit_id" ref="mass_mailing.mailing_list_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <!-- Thêm trường tìm kiếm theo start_date -->
+                <field name="start_date" string="Start Date"/>
+            </xpath>
+
+            <xpath expr="//group" position="inside">
+                <!-- Group By theo start_date -->
+                <filter string="Start Date" name="group_start_date"
+                        context="{'group_by': 'start_date'}"/>
+            </xpath>
+        </field>
+    </record>
+
+
 </odoo>

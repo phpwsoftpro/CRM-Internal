@@ -54,3 +54,4 @@ registry.category("kanban_header_config_items").add(
     },
     { sequence: 61 }
 );
+
