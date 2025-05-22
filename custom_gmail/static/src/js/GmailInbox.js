@@ -22,6 +22,7 @@ import {
     toggleSelect,
     toggleSelectAll,
     toggleThreadMessage,
+
 } from "./uiUtils";
 
 async function getCurrentUserId() {
@@ -59,7 +60,8 @@ export class GmailInbox extends Component {
         this.addGmailAccount = this._addGmailAccount;
         this.addOutlookAccount = this._addOutlookAccount;
         this.switchTab = this._switchTab.bind(this);
-    
+
+
         this.state.messagesByEmail = {};
     
         // 👇 Khôi phục tài khoản từ localStorage (nếu chưa có database)
