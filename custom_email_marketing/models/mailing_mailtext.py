@@ -11,5 +11,5 @@ class MailingMailText(models.Model):
         string="Mail Content",
         sanitize="email_outgoing",
         render_engine="qweb",
-        render_options={"post_process": True},
+        render_options={"post_process": True}, 
     )
