@@ -15,6 +15,9 @@ import time
 
 
 class GmailInboxController(http.Controller):
+
+
+
     @staticmethod
     def clean_gmail_body(html_content):
         soup = BeautifulSoup(html_content or "", "lxml")

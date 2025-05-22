@@ -59,7 +59,13 @@ class OutlookMessageController(http.Controller):
 
     @http.route("/outlook/current_user_info", type="json", auth="user")
     def outlook_current_user_info(self):
-        access_token = request.env.user.outlook_access_token
+        account = (
+            request.env["outlook.account"]
+            .sudo()
+            .search([("user_id", "=", request.env.user.id)], limit=1)
+        )
+        access_token = account.outlook_access_token if account else ""
+
         if not access_token:
             return {"status": "error", "message": "No access token"}
 
@@ -120,7 +126,17 @@ class OutlookMessageController(http.Controller):
 
     @http.route("/outlook/message_detail", type="json", auth="user")
     def outlook_message_detail(self, message_id):
-        access_token = request.env.user.sudo().outlook_access_token
+        account = (
+            request.env["outlook.account"]
+            .sudo()
+            .search([("user_id", "=", request.env.user.id)], limit=1)
+        )
+
+        if not account:
+            return {"status": "error", "message": "Outlook account not found"}
+
+        access_token = account.outlook_access_token
+
         if not access_token:
             return {"status": "error", "message": "No Outlook access token found"}
 
