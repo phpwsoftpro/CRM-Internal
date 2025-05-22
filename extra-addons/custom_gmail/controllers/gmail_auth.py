@@ -135,25 +135,25 @@ class GmailAuthController(Controller):
         Sync Gmail messages and create notifications.
         """
         current_partner_id = request.env.user.partner_id.id
-        discuss_channel = (
-            request.env["discuss.channel"]
-            .sudo()
-            .search([("name", "=", "Inbox")], limit=1)
-        )
+        # discuss_channel = (
+        #     request.env["discuss.channel"]
+        #     .sudo()
+        #     .search([("name", "=", "Inbox")], limit=1)
+        # )
 
-        if not discuss_channel:
-            _logger.debug("Creating Discuss Inbox channel.")
-            discuss_channel = (
-                request.env["discuss.channel"]
-                .sudo()
-                .create(
-                    {
-                        "name": "Inbox",
-                        "channel_type": "chat",
-                        "channel_partner_ids": [(4, current_partner_id)],
-                    }
-                )
-            )
+        # if not discuss_channel:
+        #     _logger.debug("Creating Discuss Inbox channel.")
+        #     discuss_channel = (
+        #         request.env["discuss.channel"]
+        #         .sudo()
+        #         .create(
+        #             {
+        #                 "name": "Inbox",
+        #                 "channel_type": "chat",
+        #                 "channel_partner_ids": [(4, current_partner_id)],
+        #             }
+        #         )
+        #     )
 
         all_created = True
         for message in gmail_messages:
@@ -175,8 +175,8 @@ class GmailAuthController(Controller):
                         "subject": message["subject"] or "No Subject",
                         "body": message["body"] or "No Body",
                         "message_type": "email",
-                        "model": "discuss.channel",
-                        "res_id": discuss_channel.id,
+                        # "model": "discuss.channel",
+                        # "res_id": discuss_channel.id,
                         "author_id": current_partner_id,
                         "gmail_account_id": account.id,
                     }

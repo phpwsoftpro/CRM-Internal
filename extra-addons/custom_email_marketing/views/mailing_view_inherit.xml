@@ -13,8 +13,6 @@
     <record id="mass_mailing.action_view_mass_mailing_lists" model="ir.actions.act_window">
         <field name="context">{'group_by': 'folder_id'}</field>
     </record>
-
-    
     <record id="view_mailing_list_search_folder" model="ir.ui.view">
         <field name="name">mailing.list.search.folder</field>
         <field name="model">mailing.list</field>
@@ -26,4 +24,16 @@
         </field>
     </record>
 
+    <!-- views/mailing_mailing_views.xml -->
+    <!-- <record id="view_mailing_mailing_form_inherit_test_subject" model="ir.ui.view">
+        <field name="name">mailing.mailing.form.inherit.test.subject</field>
+        <field name="model">mailing.mailing</field>
+        <field name="inherit_id" ref="mass_mailing.view_mail_mass_mailing_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='subject']" position="after">
+                <field name="test_subject"/>
+            </xpath>
+
+        </field>
+    </record> -->
 </odoo>

@@ -1,5 +1,5 @@
 import logging
-import msal 
+import msal
 import requests
 from datetime import datetime, timedelta
 from odoo import models, fields, api
@@ -70,8 +70,10 @@ class OutlookMailSync(models.Model):
 
         try:
             # Get auth code from user
-            user = self.env["res.users"].browse(user_id)
-            auth_code = user.outlook_auth_code
+            account = self.env["outlook.account"].search(
+                [("user_id", "=", user_id)], limit=1
+            )
+            auth_code = account.outlook_auth_code if account else ""
 
             if not auth_code:
                 sync_job.write({"status": "failed"})
