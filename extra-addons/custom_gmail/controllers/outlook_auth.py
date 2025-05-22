@@ -69,22 +69,41 @@ class OutlookAuthController(http.Controller):
             user_info = graph_response.json()
             email = user_info.get("mail") or user_info.get("userPrincipalName")
 
-        # Lưu vào res.users
-        user = request.env.user.sudo()
-        user.write(
-            {
-                "outlook_access_token": access_token,
-                "outlook_refresh_token": refresh_token,
-                "outlook_authenticated_email": email or False,
-            }
+        # Lưu vào outlook.account
+        account = (
+            request.env["outlook.account"]
+            .sudo()
+            .search(
+                [("user_id", "=", request.env.user.id), ("email", "=", email)], limit=1
+            )
         )
+        if account:
+            account.write(
+                {
+                    "outlook_access_token": access_token,
+                    "outlook_refresh_token": refresh_token,
+                    "outlook_authenticated_email": email or False,
+                }
+            )
+        else:
+            request.env["outlook.account"].sudo().create(
+                {
+                    "user_id": request.env.user.id,
+                    "email": email,
+                    "outlook_access_token": access_token,
+                    "outlook_refresh_token": refresh_token,
+                    "outlook_authenticated_email": email or False,
+                }
+            )
 
         # ✅ Tạo outlook.account nếu chưa có
         OutlookAccount = request.env["outlook.account"].sudo()
+        user_id = request.env.user.id
+
         existing = OutlookAccount.search(
             [
                 ("email", "=", email),
-                ("user_id", "=", user.id),
+                ("user_id", "=", user_id),
             ],
             limit=1,
         )
@@ -93,7 +112,7 @@ class OutlookAuthController(http.Controller):
             OutlookAccount.create(
                 {
                     "email": email,
-                    "user_id": user.id,
+                    "user_id": user_id,
                 }
             )
 
@@ -117,9 +136,14 @@ class OutlookAuthController(http.Controller):
 
     @http.route("/outlook/messages", type="json", auth="user")
     def outlook_messages(self, **kw):
-        user = request.env.user.sudo()
-        access_token = user.outlook_access_token
-        refresh_token = user.outlook_refresh_token
+        account = (
+            request.env["outlook.account"]
+            .sudo()
+            .search([("user_id", "=", request.env.user.id)], limit=1)
+        )
+        access_token = account.outlook_access_token if account else ""
+        refresh_token = account.outlook_refresh_token if account else ""
+
         client_id = (
             request.env["ir.config_parameter"].sudo().get_param("outlook_client_id")
         )

@@ -60,6 +60,8 @@ export class GmailInbox extends Component {
         this.addOutlookAccount = this._addOutlookAccount;
         this.switchTab = this._switchTab.bind(this);
         this.state.isLoading = false;
+
+
         this.state.messagesByEmail = {};
     
         // 🛑 Khôi phục từ localStorage (ban đầu)
