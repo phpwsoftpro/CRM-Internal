@@ -7,7 +7,6 @@ from lxml import html
 import mimetypes
 from datetime import datetime, timedelta
 from email.utils import parsedate_to_datetime
-from odoo.addons.bus.models.bus import ImBus
 
 _logger = logging.getLogger(__name__)
 
@@ -203,7 +202,7 @@ class GmailFetch(models.Model):
                 raise ValueError(f"❌ Failed to refresh token for {account.email}")
 
         headers = {"Authorization": f"Bearer {account.access_token}"}
-        max_messages = 15
+        max_messages = 5
         fetched_count = 0
         next_page_token = None
         base_url = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
@@ -237,7 +236,7 @@ class GmailFetch(models.Model):
         )
 
         while fetched_count < max_messages:
-            params = {"maxResults": 15}
+            params = {"maxResults": 15, "q": "in:inbox"}
             if next_page_token:
                 params["pageToken"] = next_page_token
 
@@ -305,6 +304,7 @@ class GmailFetch(models.Model):
                 message = self.env["mail.message"].create(
                     {
                         "gmail_id": gmail_id,
+                        "gmail_account_id": account.id,  # 🔥 Thêm dòng này
                         "is_gmail": True,
                         "body": body_html,
                         "subject": subject,
@@ -355,14 +355,11 @@ class GmailFetch(models.Model):
             )
         except Exception as e:
             _logger.warning("⚠️ Không thể cập nhật sync state: %s", e)
-        # try:
-        #     ImBus._sendone(
-        #         f"gmail_mail_update_{account.user_id.id}",  # channel name
-        #         "notification",  # notification_type (required)
-        #         {"new": True, "count": fetched_count},  # message payload
-        #     )
-        # except Exception as e:
-        #     _logger.warning("⚠️ Gửi bus thất bại (ImBus): %s", e)
+
+        try:
+            account.sudo().write({"has_new_mail": True})
+        except Exception as e:
+            _logger.warning("\u26a0\ufe0f Không thể cập nhật cờ has_new_mail: %s", e)
 
         _logger.info("✅ Đồng bộ Gmail hoàn tất (%s messages)", fetched_count)
         return True

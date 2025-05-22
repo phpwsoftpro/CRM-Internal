@@ -14,6 +14,7 @@
     ],
     "assets": {
         "web.assets_backend": [
+            "custom_gmail/static/src/css/loading.css",
             "custom_gmail/static/src/css/gmail_inbox.css",
             "custom_gmail/static/src/css/compose_modal.css",
             "custom_gmail/static/src/css/gmail_attachment.css",
@@ -37,6 +38,7 @@
             "custom_gmail/static/src/js/upload_adapter.js",
         ]
     },
+    "post_init_hook": "post_init_hook",
     "installable": True,
     "application": False,
 }
