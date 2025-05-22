@@ -33,7 +33,6 @@
             "custom_gmail/static/src/js/ckeditor.js",
             "custom_gmail/static/src/js/template.js",
             "custom_gmail/static/src/js/upload_adapter.js",
-            "custom_gmail/static/src/js/kanban_header_cogmenu.js"
         ]
     },
     "installable": True,
