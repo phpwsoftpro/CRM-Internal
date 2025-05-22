@@ -6,7 +6,6 @@ from odoo.http import request, Controller
 from datetime import datetime, timedelta
 from odoo import http
 from werkzeug.utils import redirect
-import uuid
 
 _logger = logging.getLogger(__name__)
 
@@ -120,7 +119,7 @@ class GmailAuthController(Controller):
             )
 
         _logger.info("📬 Fetching Gmail for account ID %s", account.id)
-        request.env["mail.message"].sudo().fetch_gmail_for_account(account.id)
+        request.env["mail.message"].sudo().fetch_gmail_for_account(account)
 
         _logger.info("✅ Gmail sync complete. Redirecting to OWL UI.")
         return """

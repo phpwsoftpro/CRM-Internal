@@ -1,6 +1,6 @@
 /** @odoo-module **/
 import { useState } from "@odoo/owl";
-
+ 
 export function initialState() {
     return useState({
         accounts: [],

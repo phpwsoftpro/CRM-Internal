@@ -112,6 +112,9 @@ export default xml`
             </ul>
         </div>
         <div class="gmail-header">
+            <t t-if="state.loading">
+                <div class="simple-loading-banner">Loading...</div>
+            </t>
             <!-- Filters & Actions -->
             <div class="header-actions">
                 <div class="email-checkbox-all">
