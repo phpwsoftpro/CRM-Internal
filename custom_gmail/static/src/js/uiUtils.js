@@ -48,9 +48,6 @@ export function toggleThreadMessage(threadMsg) {
     }
 }
 
-export function onRefresh() {
-    this.loadEmails();
-}
 
 
 export function getStatusText(status) {

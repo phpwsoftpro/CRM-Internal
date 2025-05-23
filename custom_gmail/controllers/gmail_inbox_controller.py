@@ -16,8 +16,6 @@ import time
 
 class GmailInboxController(http.Controller):
 
-
-
     @staticmethod
     def clean_gmail_body(html_content):
         soup = BeautifulSoup(html_content or "", "lxml")
@@ -127,6 +125,18 @@ class GmailInboxController(http.Controller):
             )
         )
         return {"account_id": account.id if account else False}
+
+    @http.route("/gmail/refresh_mail", type="json", auth="user")
+    def refresh_mail(self, **kwargs):
+        account_id = kwargs.get("account_id")
+        if not account_id:
+            return {"status": "fail", "error": "Thiếu account_id"}
+
+        _logger.info("📥 Đã nhận refresh request cho account_id = %s", account_id)
+
+        account = request.env["gmail.account"].sudo().browse(int(account_id))
+        result = request.env["mail.message"].fetch_gmail_for_account(account)
+        return {"status": "ok" if result else "fail"}
 
     @http.route("/gmail/sync_account", type="json", auth="user")
     def sync_gmail_by_account(self, account_id):
