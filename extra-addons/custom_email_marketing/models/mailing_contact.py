@@ -15,7 +15,7 @@ class MailingContact(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if "email" in vals:
+        if "email" in vals or "company_name" in vals:
             self.sudo()._ensure_partner_links()
         return res
 
@@ -24,53 +24,55 @@ class MailingContact(models.Model):
             if not contact.email:
                 continue
 
-            # Lấy domain từ email
             domain_match = re.search(r"@([\w\-\.]+)", contact.email)
             if not domain_match:
                 continue
 
             domain = domain_match.group(1).lower()
-            company_name = domain.split(".")[0].capitalize()
+            company_name = contact.company_name or domain.split(".")[0].capitalize()
 
-            # 🔍 1. Tìm hoặc tạo res.company
+            # 1. Ưu tiên tìm theo domain
             company = (
                 self.env["res.company"]
                 .sudo()
-                .search([("x_domain_email", "=", domain)], limit=1)
+                .search(
+                    [("x_domain_email", "=", domain), ("active", "=", True)], limit=1
+                )
             )
 
+            # 2. Nếu không có domain, tìm theo tên công ty
             if not company:
-                # Nếu domain chưa có, thì kiểm tra tên công ty đã có chưa
-                existing_company_name = (
+                company = (
                     self.env["res.company"]
                     .sudo()
-                    .search([("name", "=", company_name)], limit=1)
-                )
-                if company and not company.x_domain_email:
-                    company.sudo().write({"x_domain_email": domain})
-                elif not company:
-                    company = (
-                        self.env["res.company"]
-                        .sudo()
-                        .create(
-                            {
-                                "name": company_name,
-                                "x_domain_email": domain,
-                            }
-                        )
+                    .search(
+                        [("name", "=ilike", company_name), ("active", "=", True)],
+                        limit=1,
                     )
-
-            # 🔍 2. Tìm hoặc tạo partner công ty liên kết với res.company
-            company_partner = (
-                self.env["res.partner"]
-                .sudo()
-                .search(
-                    [
-                        ("is_company", "=", True),
-                        ("id", "=", company.partner_id.id),
-                    ],
-                    limit=1,
                 )
+
+            # Gán domain nếu tìm được theo name
+            if company and not company.x_domain_email:
+                company.sudo().write({"x_domain_email": domain})
+
+            # Nếu vẫn không có thì tạo mới
+            if not company:
+                company = (
+                    self.env["res.company"]
+                    .sudo()
+                    .create(
+                        {
+                            "name": company_name,
+                            "x_domain_email": domain,
+                        }
+                    )
+                )
+
+            # Tạo hoặc lấy partner công ty
+            company_partner = company.partner_id or self.env[
+                "res.partner"
+            ].sudo().search(
+                [("is_company", "=", True), ("name", "=ilike", company_name)], limit=1
             )
 
             if not company_partner:
@@ -86,7 +88,7 @@ class MailingContact(models.Model):
                 )
                 company.sudo().write({"partner_id": company_partner.id})
 
-            # 🔍 3. Tìm hoặc tạo partner cá nhân (contact)
+            # Tìm hoặc tạo cá nhân liên kết
             partner = (
                 self.env["res.partner"]
                 .sudo()
@@ -106,7 +108,7 @@ class MailingContact(models.Model):
                     )
                 )
 
-            # 🔄 4. Gán partner_id nếu chưa gán
+            # Gán lại partner_id
             if not contact.partner_id:
                 contact.sudo().write({"partner_id": partner.id})
 
