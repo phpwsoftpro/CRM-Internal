@@ -13,7 +13,6 @@ import {
     getInitialColor,
     getStatusText,
     onCloseCompose,
-    onRefresh,
     openFilePreview,
     toggleAccounts,
     toggleDropdown,
@@ -42,7 +41,6 @@ export class GmailInbox extends Component {
         this.toggleAccounts = toggleAccounts.bind(this);
         this.toggleDropdownAccount = toggleDropdownAccount.bind(this);
         this.toggleSelectAll = toggleSelectAll.bind(this);
-        this.onRefresh = onRefresh.bind(this);
         this.saveStarredState = saveStarredState.bind(this);
         this.loadStarredState = loadStarredState.bind(this);
         this.initCKEditor = initCKEditor.bind(this);
@@ -60,6 +58,7 @@ export class GmailInbox extends Component {
         this.addOutlookAccount = this._addOutlookAccount;
         this.switchTab = this._switchTab.bind(this);
         this.state.isLoading = false;
+        this.onRefresh = this.onRefresh.bind(this);
 
 
         this.state.messagesByEmail = {};
@@ -135,7 +134,44 @@ export class GmailInbox extends Component {
 
         });
     }
-    
+
+    async onRefresh() {
+        if (this.state.isRefreshing) {
+            console.warn("🔄 Đang refresh, vui lòng chờ...");
+            return;
+        }
+
+        const accountId = this.state.activeTabId;
+        if (!accountId) {
+            console.warn("❌ Không có account được chọn");
+            return;
+        }
+
+        this.state.isRefreshing = true;
+        try {
+            const result = await rpc("/gmail/refresh_mail", {
+                account_id: accountId,
+            });
+
+            if (result.status === "ok") {
+                console.log("📬 Đã đồng bộ Gmail!");
+                const account = this.state.accounts.find(a => a.id === accountId);
+                if (account) {
+                    await this.loadMessages(account.email, true);
+                }
+            } else {
+                console.warn("❌ Lỗi khi refresh:", result.error);
+            }
+        } catch (error) {
+            console.error("❌ Lỗi khi gọi API refresh_mail:", error);
+        } finally {
+            this.state.isRefreshing = false;
+        }
+    }
+
+
+
+
     async loadGmailMessages(email) {
         const account = this.state.accounts.find(acc => acc.email === email);
         if (!account) {
@@ -460,5 +496,5 @@ export class GmailInbox extends Component {
 }    
 
 GmailInbox.template = template;
-registry.category("actions").add(GmailInbox);
+registry.category("actions").add("gmail_inbox_ui", GmailInbox);
 export default GmailInbox;
