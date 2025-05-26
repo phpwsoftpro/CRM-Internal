@@ -1094,3 +1094,16 @@
 .toggle-message:hover {
     text-decoration: underline;
 }
+
+.btn-paging {
+    padding: 4px 12px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    background-color: white;
+    cursor: pointer;
+    border-radius: 4px;
+}
+.btn-paging[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

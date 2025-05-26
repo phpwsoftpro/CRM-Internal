@@ -172,20 +172,39 @@ export class GmailInbox extends Component {
 
 
 
-    async loadGmailMessages(email) {
+    async loadGmailMessages(email, page = 1) {
         const account = this.state.accounts.find(acc => acc.email === email);
-        if (!account) {
-            console.warn("⚠️ Không tìm thấy account với email:", email);
-            return;
-        }
-
-        const messages = await rpc("/gmail/messages", {
+        if (!account) return;
+    
+        const res = await rpc("/gmail/messages", {
             account_id: parseInt(account.id),
+            page: page,
+            limit: this.state.pagination.pageSize,
         });
-
-        this.state.messagesByEmail[email] = messages;
-        this.state.messages = messages;
+    
+        this.state.messagesByEmail[email] = res.messages;
+        this.state.messages = res.messages;
+        this.state.pagination.currentPage = page;
+        this.state.pagination.total = res.total;
+        this.state.pagination.totalPages = Math.ceil(res.total / this.state.pagination.pageSize);
     }
+
+
+    async goNextPage() {
+        if (this.state.pagination.currentPage < this.state.pagination.totalPages) {
+            const acc = this.state.accounts.find(a => a.id === this.state.activeTabId);
+            if (acc) await this.loadGmailMessages(acc.email, this.state.pagination.currentPage + 1);
+        }
+    }
+    
+    async goPrevPage() {
+        if (this.state.pagination.currentPage > 1) {
+            const acc = this.state.accounts.find(a => a.id === this.state.activeTabId);
+            if (acc) await this.loadGmailMessages(acc.email, this.state.pagination.currentPage - 1);
+        }
+    }
+    
+    
     
     async loadOutlookMessages(email) {
         const res = await rpc("/outlook/messages");

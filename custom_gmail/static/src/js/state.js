@@ -17,5 +17,12 @@ export function initialState() {
         showDropdownVertical: false,
         showAccountDropdown: false,
         showAccounts: false,
+
+        pagination: {
+            currentPage: 1,
+            pageSize: 15,
+            totalPages: 1,
+            total: 0,
+        },
     });
 }
