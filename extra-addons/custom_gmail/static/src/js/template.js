@@ -287,9 +287,21 @@ export default xml`
                                                 <button class="icon-btn star-btn" aria-label="Đánh dấu sao" t-on-click.stop="() => this.toggleStar(threadMsg)">
                                                     <i t-att-class="threadMsg.starred ? 'fa fa-star' : 'fa fa-star-o'"></i>
                                                 </button>
+
+
+
                                                 <button class="icon-btn reply" aria-label="Phản hồi" t-on-click="(ev) => this.onReply(ev, threadMsg)">
                                                     <i class="fa fa-reply"></i>
                                                 </button>
+
+
+                                                <button class="icon-btn forward" aria-label="Chuyển tiếp" t-on-click="(ev) => this.onForward(ev, state.selectedMessage)">
+                                                    <i class="fa fa-share"></i>
+                                                </button>
+
+
+
+
                                                 <button class="icon-btn more-btn" aria-label="Thêm tùy chọn">
                                                     <i class="fa fa-ellipsis-v"></i>
                                                 </button>
