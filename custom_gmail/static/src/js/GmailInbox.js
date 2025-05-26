@@ -130,7 +130,7 @@ export class GmailInbox extends Component {
                         }
                     }
                 }
-            }, 100000);
+            }, 30000);
 
         });
     }

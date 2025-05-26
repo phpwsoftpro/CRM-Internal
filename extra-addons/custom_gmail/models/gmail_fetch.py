@@ -299,7 +299,6 @@ class GmailFetch(models.Model):
                 except Exception as e:
                     _logger.warning("⚠️ Parse date thất bại: %s (%s)", raw_date, e)
                     date_received = None
-
                 raw_message_id = extract_header(payload, "Message-Id")
                 message_id = raw_message_id.strip("<>") if raw_message_id else ""
 
