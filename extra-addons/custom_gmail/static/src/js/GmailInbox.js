@@ -6,7 +6,7 @@ import { initCKEditor, loadCKEditor } from "./ckeditor";
 import { onForward, onReply, onReplyAll, onSendEmail, toggleStar } from "./functions/index";
 import { openComposeModal } from "./functions/openComposeModal";
 import { initialState } from "./state";
-import { saveStarredState } from "./storageUtils";
+import { loadStarredState, saveStarredState } from "./storageUtils";
 import template from "./template";
 import {
     getInitialBgColor,
@@ -136,12 +136,18 @@ export class GmailInbox extends Component {
     }
 
     async onRefresh() {
+        if (this.state.isRefreshing) {
+            console.warn("🔄 Đang refresh, vui lòng chờ...");
+            return;
+        }
+
         const accountId = this.state.activeTabId;
         if (!accountId) {
             console.warn("❌ Không có account được chọn");
             return;
         }
 
+        this.state.isRefreshing = true;
         try {
             const result = await rpc("/gmail/refresh_mail", {
                 account_id: accountId,
@@ -158,8 +164,11 @@ export class GmailInbox extends Component {
             }
         } catch (error) {
             console.error("❌ Lỗi khi gọi API refresh_mail:", error);
+        } finally {
+            this.state.isRefreshing = false;
         }
     }
+
 
 
 

@@ -126,17 +126,33 @@ class GmailInboxController(http.Controller):
         )
         return {"account_id": account.id if account else False}
 
-    @http.route("/gmail/refresh_mail", type="json", auth="user")
+    @http.route("/gmail/refresh_mail", type="json", auth="user", csrf=False)
     def refresh_mail(self, **kwargs):
         account_id = kwargs.get("account_id")
         if not account_id:
+            _logger.warning("❌ Thiếu account_id trong request")
             return {"status": "fail", "error": "Thiếu account_id"}
 
-        _logger.info("📥 Đã nhận refresh request cho account_id = %s", account_id)
+        try:
+            _logger.info(
+                "📥 [START] Đã nhận refresh request cho account_id = %s", account_id
+            )
 
-        account = request.env["gmail.account"].sudo().browse(int(account_id))
-        result = request.env["mail.message"].fetch_gmail_for_account(account)
-        return {"status": "ok" if result else "fail"}
+            account = request.env["gmail.account"].sudo().browse(int(account_id))
+            if not account.exists():
+                _logger.warning("❌ Không tìm thấy tài khoản với ID %s", account_id)
+                return {"status": "fail", "error": "Account không tồn tại"}
+
+            result = request.env["mail.message"].fetch_gmail_for_account(account)
+
+            _logger.info("✅ [DONE] Refresh xong cho account_id = %s", account_id)
+            return {"status": "ok" if result else "fail"}
+
+        except Exception as e:
+            _logger.exception(
+                "❌ Lỗi khi xử lý refresh_mail cho account_id = %s", account_id
+            )
+            return {"status": "fail", "error": str(e)}
 
     @http.route("/gmail/sync_account", type="json", auth="user")
     def sync_gmail_by_account(self, account_id):
