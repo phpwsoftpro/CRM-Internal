@@ -202,7 +202,7 @@ class GmailFetch(models.Model):
                 raise ValueError(f"❌ Failed to refresh token for {account.email}")
 
         headers = {"Authorization": f"Bearer {account.access_token}"}
-        max_messages = 5
+        max_messages = 30
         fetched_count = 0
         next_page_token = None
         base_url = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
@@ -220,10 +220,13 @@ class GmailFetch(models.Model):
                 .create({"gmail_account_id": account.id})
             )
 
-        if sync_state.last_fetch_at:
-            after_ts = int(sync_state.last_fetch_at.timestamp()) - 300
-        else:
-            after_ts = int((datetime.utcnow() - timedelta(days=30)).timestamp())
+        # ⏱️ Skip fetch nếu mới fetch dưới 30s
+        if (
+            sync_state.last_fetch_at
+            and (datetime.utcnow() - sync_state.last_fetch_at).total_seconds() < 30
+        ):
+            _logger.info("⏳ Bỏ qua fetch: đã đồng bộ gần đây.")
+            return True
 
         existing_gmail_ids = set(
             self.search(
@@ -296,6 +299,7 @@ class GmailFetch(models.Model):
                 except Exception as e:
                     _logger.warning("⚠️ Parse date thất bại: %s (%s)", raw_date, e)
                     date_received = None
+
                 raw_message_id = extract_header(payload, "Message-Id")
                 message_id = raw_message_id.strip("<>") if raw_message_id else ""
 
@@ -304,7 +308,7 @@ class GmailFetch(models.Model):
                 message = self.env["mail.message"].create(
                     {
                         "gmail_id": gmail_id,
-                        "gmail_account_id": account.id,  # 🔥 Thêm dòng này
+                        "gmail_account_id": account.id,
                         "is_gmail": True,
                         "body": body_html,
                         "subject": subject,
@@ -359,7 +363,7 @@ class GmailFetch(models.Model):
         try:
             account.sudo().write({"has_new_mail": True})
         except Exception as e:
-            _logger.warning("\u26a0\ufe0f Không thể cập nhật cờ has_new_mail: %s", e)
+            _logger.warning("⚠️ Không thể cập nhật cờ has_new_mail: %s", e)
 
         _logger.info("✅ Đồng bộ Gmail hoàn tất (%s messages)", fetched_count)
         return True

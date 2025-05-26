@@ -1,5 +1,6 @@
 /** @odoo-module **/
 
+
 export function toggleDropdown(ev) {
     ev.stopPropagation();
     this.state.showDropdown = !this.state.showDropdown;
@@ -47,9 +48,6 @@ export function toggleThreadMessage(threadMsg) {
     }
 }
 
-export function onRefresh() {
-    this.loadEmails();
-}
 
 
 export function getStatusText(status) {
@@ -95,3 +93,5 @@ export function openFilePreview(ev) {
     iframe.src = url; // hoặc `${url}?inline=1`
     modal.style.display = "block";
 }
+
+

@@ -10,10 +10,19 @@ function hasUrlChanged() {
     }
     return false;
 }
-
 function activateCommentTab() {
     const noteBtn = document.querySelector(".o-mail-Chatter-logNote");
     const composer = document.querySelector(".o-mail-Composer");
+
+    // Chỉ kiểm tra field có class lỗi
+    const invalidFields = document.querySelectorAll(".o_field_invalid");
+
+    if (invalidFields.length > 0) {
+        console.warn("⚠️ Form contains invalid fields. Skipping auto-comment tab.");
+        return;
+    }
+
+    // Kiểm tra đã có nút và chưa mở khung comment
     if (noteBtn && (!composer || composer.classList.contains("d-none"))) {
         noteBtn.click();
     }
