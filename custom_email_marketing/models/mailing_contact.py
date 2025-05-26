@@ -23,7 +23,7 @@ class MailingContact(models.Model):
         return res
 
     def _ensure_partner_links(self):
-        _logger.info("[🔁] Running _ensure_partner_links for contacts: %%s", self)
+        _logger.info("[🔁] Running _ensure_partner_links for contacts: %s", self)
         for contact in self:
             if not contact.email:
                 continue
@@ -35,31 +35,44 @@ class MailingContact(models.Model):
             domain = domain_match.group(1).lower()
             company_name = (contact.company_name or domain.split(".")[0]).strip()
 
-            # ⚠️ Tìm theo domain ưu tiên
-            company = (
+            company = None
+
+            # 1️⃣ Ưu tiên tìm theo name (chỉ chọn active=True)
+            company_by_name = (
                 self.env["res.company"]
                 .sudo()
                 .search(
-                    [("x_domain_email", "=", domain), ("active", "=", True)], limit=1
+                    [
+                        ("name", "=ilike", company_name),
+                        ("active", "=", True),
+                    ],
+                    limit=1,
                 )
             )
 
-            # Nếu không có domain, tìm theo tên gần đúng (case-insensitive)
-            if not company:
-                company = (
+            if company_by_name:
+                company = company_by_name
+            else:
+                # 2️⃣ Nếu không có name, tìm theo domain (active=True)
+                company_by_domain = (
                     self.env["res.company"]
                     .sudo()
                     .search(
-                        [("name", "=ilike", company_name), ("active", "=", True)],
+                        [
+                            ("x_domain_email", "=", domain),
+                            ("active", "=", True),
+                        ],
                         limit=1,
                     )
                 )
+                if company_by_domain:
+                    company = company_by_domain
 
-            # Nếu tìm theo name mà chưa có domain, thì gán domain vào
+            # 3️⃣ Nếu có công ty active nhưng chưa có domain → gán domain
             if company and not company.x_domain_email:
                 company.sudo().write({"x_domain_email": domain})
 
-            # Nếu vẫn không có, thì tạo mới company
+            # 4️⃣ Nếu không có công ty nào active → tạo mới
             if not company:
                 company = (
                     self.env["res.company"]
