@@ -126,7 +126,9 @@ registry.category("kanban_header_config_items").add(
     {
         label: "📅 Sort by Deadline",
         method: "dateDeadlineSort",
-        isVisible: ({ permissions }) => permissions.canEditAutomations,
+        isVisible: ({ permissions, props }) =>
+            permissions.canEditAutomations &&
+            props.list.model.config.resModel === "project.task",
         class: "o_column_test",
     },
     { sequence: 63 }

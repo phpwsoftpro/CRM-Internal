@@ -151,6 +151,27 @@ export default xml`
                     </div>
                 </div>
 
+                
+                
+                <div class="header-pagination" style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 8px 16px;">
+                    <div class="total-count" style="font-size: 14px;">
+                        <t t-if="false">Tổng: <t t-esc="state.pagination.total"/> thư</t>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-right: 20px; margin-top: 8px;">
+                        <button t-on-click="goPrevPage"
+                                t-att-disabled="state.pagination.currentPage === 1"
+                                style="background: none; border: none; font-size: 20px; cursor: pointer;">
+                            ‹
+                        </button>
+                        <span style="font-size: 14px;">Trang <t t-esc="state.pagination.currentPage"/> / <t t-esc="state.pagination.totalPages"/>   Tổng: <t t-esc="state.pagination.total"/> </span>
+                        <button t-on-click="goNextPage"
+                                t-att-disabled="state.pagination.currentPage === state.pagination.totalPages"
+                                style="background: none; border: none; font-size: 20px; cursor: pointer;">
+                            ›
+                        </button>
+                    </div>
+                </div>
+
 
 
             </div>
