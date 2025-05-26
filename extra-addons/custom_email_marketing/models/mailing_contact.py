@@ -1,4 +1,7 @@
+import logging
 from odoo import models, fields, api
+
+_logger = logging.getLogger(__name__)
 import re
 
 
@@ -20,6 +23,7 @@ class MailingContact(models.Model):
         return res
 
     def _ensure_partner_links(self):
+        _logger.info("[🔁] Running _ensure_partner_links for contacts: %%s", self)
         for contact in self:
             if not contact.email:
                 continue
@@ -29,9 +33,9 @@ class MailingContact(models.Model):
                 continue
 
             domain = domain_match.group(1).lower()
-            company_name = contact.company_name or domain.split(".")[0].capitalize()
+            company_name = (contact.company_name or domain.split(".")[0]).strip()
 
-            # 1. Ưu tiên tìm theo domain
+            # ⚠️ Tìm theo domain ưu tiên
             company = (
                 self.env["res.company"]
                 .sudo()
@@ -40,7 +44,7 @@ class MailingContact(models.Model):
                 )
             )
 
-            # 2. Nếu không có domain, tìm theo tên công ty
+            # Nếu không có domain, tìm theo tên gần đúng (case-insensitive)
             if not company:
                 company = (
                     self.env["res.company"]
@@ -51,11 +55,11 @@ class MailingContact(models.Model):
                     )
                 )
 
-            # Gán domain nếu tìm được theo name
+            # Nếu tìm theo name mà chưa có domain, thì gán domain vào
             if company and not company.x_domain_email:
                 company.sudo().write({"x_domain_email": domain})
 
-            # Nếu vẫn không có thì tạo mới
+            # Nếu vẫn không có, thì tạo mới company
             if not company:
                 company = (
                     self.env["res.company"]
@@ -68,27 +72,22 @@ class MailingContact(models.Model):
                     )
                 )
 
-            # Tạo hoặc lấy partner công ty
-            company_partner = company.partner_id or self.env[
-                "res.partner"
-            ].sudo().search(
-                [("is_company", "=", True), ("name", "=ilike", company_name)], limit=1
-            )
-
+            # 🔄 Liên kết hoặc tạo res.partner công ty
+            company_partner = company.partner_id
             if not company_partner:
                 company_partner = (
                     self.env["res.partner"]
                     .sudo()
                     .create(
                         {
-                            "name": company_name,
+                            "name": company.name,
                             "is_company": True,
                         }
                     )
                 )
                 company.sudo().write({"partner_id": company_partner.id})
 
-            # Tìm hoặc tạo cá nhân liên kết
+            # 🔄 Liên kết hoặc tạo partner cá nhân (contact)
             partner = (
                 self.env["res.partner"]
                 .sudo()
@@ -108,7 +107,6 @@ class MailingContact(models.Model):
                     )
                 )
 
-            # Gán lại partner_id
             if not contact.partner_id:
                 contact.sudo().write({"partner_id": partner.id})
 
@@ -119,3 +117,17 @@ class ResCompany(models.Model):
     x_domain_email = fields.Char(
         string="Domain Email", help="Company domain extracted from email"
     )
+
+    @api.model
+    def update_companies_domain(self):
+        _logger.info("[🛠️] Updating companies x_domain_email from existing emails...")
+        companies = self.sudo().search([("x_domain_email", "=", False)])
+        for company in companies:
+            if company.partner_id and company.partner_id.email:
+                domain_match = re.search(r"@([\w\-\.]+)", company.partner_id.email)
+                if domain_match:
+                    domain = domain_match.group(1).lower()
+                    _logger.info(
+                        "[✅] Updating company %s domain to %s", company.name, domain
+                    )
+                    company.sudo().write({"x_domain_email": domain})

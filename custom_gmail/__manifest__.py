@@ -6,19 +6,22 @@
     "author": "Your Name",
     "website": "https://crm2.wsoftpro.com",
     "category": "Communication",
-    "depends": ["mail"],
+    "depends": ["mail", "bus"],
     "data": [
+        "security/ir.model.access.csv",
         "views/discuss_view.xml",
+        "data/ir_cron.xml",
     ],
     "assets": {
         "web.assets_backend": [
+            "custom_gmail/static/src/css/loading.css",
             "custom_gmail/static/src/css/gmail_inbox.css",
             "custom_gmail/static/src/css/compose_modal.css",
             "custom_gmail/static/src/css/gmail_attachment.css",
             "custom_gmail/static/src/css/form_provider.css",
             "custom_gmail/static/src/js/GmailInbox.js",
             "custom_gmail/static/src/js/state.js",
-            "custom_gmail/static/src/js/functions/loadMessages.js",
+            # "custom_gmail/static/src/js/functions/loadMessages.js",
             "custom_gmail/static/src/js/functions/toggleStar.js",
             "custom_gmail/static/src/js/functions/onReply.js",
             "custom_gmail/static/src/js/functions/onReplyAll.js",
@@ -33,9 +36,9 @@
             "custom_gmail/static/src/js/ckeditor.js",
             "custom_gmail/static/src/js/template.js",
             "custom_gmail/static/src/js/upload_adapter.js",
-            "custom_gmail/static/src/js/kanban_header_cogmenu.js"
         ]
     },
+    "post_init_hook": "post_init_hook",
     "installable": True,
     "application": False,
 }
