@@ -309,7 +309,7 @@ export default xml`
                                         </div>
 
                                         <div class="message-content" t-att-style="threadMsg.collapsed ? 'display: none;' : 'display: block;'">
-                                            <t t-esc="threadMsg.body"/>
+                                            <t t-raw="threadMsg.body_cleaned || threadMsg.body"/>
                                         </div>
 
                                         <div class="email-attachments" t-if="threadMsg.attachments and threadMsg.attachments.length">

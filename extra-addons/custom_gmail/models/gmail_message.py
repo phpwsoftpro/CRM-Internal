@@ -7,6 +7,10 @@ _logger = logging.getLogger(__name__)
 class GmailMessage(models.Model):
     _inherit = "mail.message"
 
+    sender_name = fields.Char(string="Sender Name")
+    receiver_name = fields.Char(string="Receiver Name")
+    avatar_url = fields.Char(string="Avatar URL")
+
     gmail_id = fields.Char(string="Gmail ID", index=True)
     gmail_body = fields.Text(string="Body")
     is_gmail = fields.Boolean(string="Is Gmail Message", default=False)

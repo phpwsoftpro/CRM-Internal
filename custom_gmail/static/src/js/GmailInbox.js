@@ -175,19 +175,39 @@ export class GmailInbox extends Component {
     async loadGmailMessages(email, page = 1) {
         const account = this.state.accounts.find(acc => acc.email === email);
         if (!account) return;
-    
+
         const res = await rpc("/gmail/messages", {
             account_id: parseInt(account.id),
             page: page,
             limit: this.state.pagination.pageSize,
         });
-    
+
+        // Lưu toàn bộ messages theo email
         this.state.messagesByEmail[email] = res.messages;
         this.state.messages = res.messages;
+
+        // ✅ Phân nhóm theo thread_id
+        this.state.threads = {};
+        for (const msg of res.messages) {
+            if (msg.thread_id) {
+                if (!this.state.threads[msg.thread_id]) {
+                    this.state.threads[msg.thread_id] = [];
+                }
+                this.state.threads[msg.thread_id].push(msg);
+            }
+        }
+
+        // ✅ Sắp xếp các email trong mỗi thread theo thời gian tăng dần
+        for (const thread_id in this.state.threads) {
+            this.state.threads[thread_id].sort((a, b) => new Date(a.date_received) - new Date(b.date_received));
+        }
+
+        // Cập nhật phân trang
         this.state.pagination.currentPage = page;
         this.state.pagination.total = res.total;
         this.state.pagination.totalPages = Math.ceil(res.total / this.state.pagination.pageSize);
     }
+
 
 
     async goNextPage() {
