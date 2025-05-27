@@ -294,6 +294,12 @@ export default xml`
                                                     <i class="fa fa-reply"></i>
                                                 </button>
 
+                                                <button class="icon-btn reply-all" aria-label="Trả lời tất cả" t-on-click="(ev) => this.onReplyAll(ev, state.selectedMessage)">
+                                                    <i class="fa fa-reply-all"></i>
+                                                </button>
+
+
+
 
                                                 <button class="icon-btn forward" aria-label="Chuyển tiếp" t-on-click="(ev) => this.onForward(ev, state.selectedMessage)">
                                                     <i class="fa fa-share"></i>

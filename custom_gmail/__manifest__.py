@@ -21,7 +21,7 @@
             "custom_gmail/static/src/css/form_provider.css",
             "custom_gmail/static/src/js/GmailInbox.js",
             "custom_gmail/static/src/js/state.js",
-            # "custom_gmail/static/src/js/functions/loadMessages.js",
+            "custom_gmail/static/src/js/functions/loadMessages.js",
             "custom_gmail/static/src/js/functions/toggleStar.js",
             "custom_gmail/static/src/js/functions/onReply.js",
             "custom_gmail/static/src/js/functions/onReplyAll.js",
@@ -38,7 +38,7 @@
             "custom_gmail/static/src/js/upload_adapter.js",
         ]
     },
-    "post_init_hook": "post_init_hook",
+    # "post_init_hook": "post_init_hook",
     "installable": True,
     "application": False,
 }
