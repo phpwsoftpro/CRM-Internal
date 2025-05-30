@@ -1,8 +1,8 @@
 import logging
+import re
 from odoo import models, fields, api
 
 _logger = logging.getLogger(__name__)
-import re
 
 
 class MailingContact(models.Model):
@@ -23,7 +23,6 @@ class MailingContact(models.Model):
         return res
 
     def _ensure_partner_links(self):
-        _logger.info("[🔁] Running _ensure_partner_links for contacts: %s", self)
         for contact in self:
             if not contact.email:
                 continue
@@ -35,44 +34,50 @@ class MailingContact(models.Model):
             domain = domain_match.group(1).lower()
             company_name = (contact.company_name or domain.split(".")[0]).strip()
 
-            company = None
-
-            # 1️⃣ Ưu tiên tìm theo name (chỉ chọn active=True)
-            company_by_name = (
+            # 1. Tìm công ty active theo domain
+            company = (
                 self.env["res.company"]
                 .sudo()
                 .search(
                     [
-                        ("name", "=ilike", company_name),
+                        ("x_domain_email", "=", domain),
                         ("active", "=", True),
                     ],
                     limit=1,
                 )
             )
 
-            if company_by_name:
-                company = company_by_name
-            else:
-                # 2️⃣ Nếu không có name, tìm theo domain (active=True)
-                company_by_domain = (
-                    self.env["res.company"]
+            # 2. Nếu chưa tìm được, tìm theo tên công ty gần đúng (ưu tiên công ty do bạn tạo tay)
+            if not company:
+                # Tìm partner công ty đã có tên gần đúng và email thuộc domain
+                candidate_partners = (
+                    self.env["res.partner"]
                     .sudo()
                     .search(
                         [
-                            ("x_domain_email", "=", domain),
-                            ("active", "=", True),
+                            ("is_company", "=", True),
+                            ("name", "=ilike", company_name),
+                            ("email", "ilike", f"@{domain}"),
                         ],
                         limit=1,
                     )
                 )
-                if company_by_domain:
-                    company = company_by_domain
 
-            # 3️⃣ Nếu có công ty active nhưng chưa có domain → gán domain
-            if company and not company.x_domain_email:
-                company.sudo().write({"x_domain_email": domain})
+                if candidate_partners:
+                    # Tìm công ty nào đang dùng partner này làm partner_id
+                    company = (
+                        self.env["res.company"]
+                        .sudo()
+                        .search(
+                            [
+                                ("partner_id", "=", candidate_partners.id),
+                                ("active", "=", True),
+                            ],
+                            limit=1,
+                        )
+                    )
 
-            # 4️⃣ Nếu không có công ty nào active → tạo mới
+            # 3. Nếu vẫn không có, tạo mới công ty
             if not company:
                 company = (
                     self.env["res.company"]
@@ -85,7 +90,11 @@ class MailingContact(models.Model):
                     )
                 )
 
-            # 🔄 Liên kết hoặc tạo res.partner công ty
+            # 4. Cập nhật domain nếu thiếu
+            if company and not company.x_domain_email:
+                company.sudo().write({"x_domain_email": domain})
+
+            # 5. Tạo hoặc liên kết partner công ty
             company_partner = company.partner_id
             if not company_partner:
                 company_partner = (
@@ -95,12 +104,13 @@ class MailingContact(models.Model):
                         {
                             "name": company.name,
                             "is_company": True,
+                            "email": f"info@{domain}",
                         }
                     )
                 )
                 company.sudo().write({"partner_id": company_partner.id})
 
-            # 🔄 Liên kết hoặc tạo partner cá nhân (contact)
+            # 6. Tìm hoặc tạo partner cá nhân (contact)
             partner = (
                 self.env["res.partner"]
                 .sudo()
@@ -128,19 +138,73 @@ class ResCompany(models.Model):
     _inherit = "res.company"
 
     x_domain_email = fields.Char(
-        string="Domain Email", help="Company domain extracted from email"
+        string="Domain Email", help="Company domain extracted from contact emails"
     )
 
     @api.model
-    def update_companies_domain(self):
-        _logger.info("[🛠️] Updating companies x_domain_email from existing emails...")
-        companies = self.sudo().search([("x_domain_email", "=", False)])
-        for company in companies:
-            if company.partner_id and company.partner_id.email:
-                domain_match = re.search(r"@([\w\-\.]+)", company.partner_id.email)
-                if domain_match:
-                    domain = domain_match.group(1).lower()
-                    _logger.info(
-                        "[✅] Updating company %s domain to %s", company.name, domain
-                    )
-                    company.sudo().write({"x_domain_email": domain})
+    def update_company_domains():
+        # Lọc cả False, '', chuỗi trắng
+        company_ids = models.execute_kw(
+            db,
+            uid,
+            password,
+            "res.company",
+            "search",
+            [[("x_domain_email", "in", [False, "", " "])]],
+        )
+
+        print(f"🔍 Tìm thấy {len(company_ids)} công ty chưa có x_domain_email.")
+
+        if not company_ids:
+            return
+
+        companies = models.execute_kw(
+            db,
+            uid,
+            password,
+            "res.company",
+            "read",
+            [company_ids],
+            {"fields": ["id", "name", "partner_id", "website"]},
+        )
+
+        partner_ids = [c["partner_id"][0] for c in companies if c["partner_id"]]
+        partner_emails = {}
+        if partner_ids:
+            partners = models.execute_kw(
+                db,
+                uid,
+                password,
+                "res.partner",
+                "read",
+                [partner_ids],
+                {"fields": ["id", "email"]},
+            )
+            partner_emails = {p["id"]: p["email"] for p in partners}
+
+        updated = 0
+        for comp in companies:
+            partner_email = (
+                partner_emails.get(comp["partner_id"][0])
+                if comp["partner_id"]
+                else None
+            )
+            domain = extract_domain_from_email(
+                partner_email
+            ) or extract_domain_from_website(comp["website"])
+
+            if domain:
+                models.execute_kw(
+                    db,
+                    uid,
+                    password,
+                    "res.company",
+                    "write",
+                    [[comp["id"]], {"x_domain_email": domain}],
+                )
+                print(f"✅ Gán domain `{domain}` cho công ty `{comp['name']}`")
+                updated += 1
+            else:
+                print(f"⚠️ Không tìm được domain cho công ty `{comp['name']}`")
+
+        print(f"✅ Hoàn tất cập nhật {updated}/{len(companies)} công ty.")
