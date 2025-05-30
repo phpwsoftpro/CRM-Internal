@@ -3,7 +3,7 @@ import { Component, onMounted } from "@odoo/owl";
 import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
 import { initCKEditor, loadCKEditor } from "./ckeditor";
-import { onForward, onReply, onReplyAll, onSendEmail, toggleStar } from "./functions/index";
+import { onAnalyze, onForward, onReply, onReplyAll, onSendEmail, toggleStar } from "./functions/index";
 import { openComposeModal } from "./functions/openComposeModal";
 import { initialState } from "./state";
 import { loadStarredState, saveStarredState } from "./storageUtils";
@@ -35,6 +35,7 @@ export class GmailInbox extends Component {
         this.toggleStar = toggleStar.bind(this);
         this.onReply = onReply.bind(this);
         this.onReplyAll = onReplyAll.bind(this);
+        this.onAnalyze = onAnalyze.bind(this);
         this.onForward = onForward.bind(this);
         this.toggleDropdown = toggleDropdown.bind(this);
         this.toggleDropdownVertical = toggleDropdownVertical.bind(this);
@@ -175,15 +176,33 @@ export class GmailInbox extends Component {
     async loadGmailMessages(email, page = 1) {
         const account = this.state.accounts.find(acc => acc.email === email);
         if (!account) return;
-    
         const res = await rpc("/gmail/messages", {
             account_id: parseInt(account.id),
             page: page,
             limit: this.state.pagination.pageSize,
         });
-    
+
+        // Lưu toàn bộ messages theo email
         this.state.messagesByEmail[email] = res.messages;
         this.state.messages = res.messages;
+
+        // ✅ Phân nhóm theo thread_id
+        this.state.threads = {};
+        for (const msg of res.messages) {
+            if (msg.thread_id) {
+                if (!this.state.threads[msg.thread_id]) {
+                    this.state.threads[msg.thread_id] = [];
+                }
+                this.state.threads[msg.thread_id].push(msg);
+            }
+        }
+
+        // ✅ Sắp xếp các email trong mỗi thread theo thời gian tăng dần
+        for (const thread_id in this.state.threads) {
+            this.state.threads[thread_id].sort((a, b) => new Date(a.date_received) - new Date(b.date_received));
+        }
+
+        // Cập nhật phân trang
         this.state.pagination.currentPage = page;
         this.state.pagination.total = res.total;
         this.state.pagination.totalPages = Math.ceil(res.total / this.state.pagination.pageSize);

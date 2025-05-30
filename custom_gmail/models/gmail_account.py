@@ -17,6 +17,12 @@ class GmailAccount(models.Model):
     refresh_token = fields.Char("Refresh Token")
     token_expiry = fields.Datetime("Token Expiry")
     has_new_mail = fields.Boolean("Has New Mail", default=False)
+    provider = fields.Selection(
+        [("gmail", "Gmail"), ("outlook", "Outlook")],
+        string="Provider",
+        required=False,
+        default="gmail",
+    )
 
 
 class GmailAccountSyncState(models.Model):

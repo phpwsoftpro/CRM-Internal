@@ -287,9 +287,34 @@ export default xml`
                                                 <button class="icon-btn star-btn" aria-label="Đánh dấu sao" t-on-click.stop="() => this.toggleStar(threadMsg)">
                                                     <i t-att-class="threadMsg.starred ? 'fa fa-star' : 'fa fa-star-o'"></i>
                                                 </button>
+
+
+
                                                 <button class="icon-btn reply" aria-label="Phản hồi" t-on-click="(ev) => this.onReply(ev, threadMsg)">
                                                     <i class="fa fa-reply"></i>
                                                 </button>
+
+                                                <button class="icon-btn reply-all" aria-label="Trả lời tất cả" t-on-click="(ev) => this.onReplyAll(ev, state.selectedMessage)">
+                                                    <i class="fa fa-reply-all"></i>
+                                                </button>
+
+                                                <button class="action-btn analyze-email"
+                                                        aria-label="Phân tích nội dung"
+                                                        t-on-click="(ev) => this.onAnalyze(ev, state.selectedMessage)">
+                                                    <i class="fa fa-magic"></i> Phân tích
+                                                </button>
+
+
+
+
+
+                                                <button class="icon-btn forward" aria-label="Chuyển tiếp" t-on-click="(ev) => this.onForward(ev, state.selectedMessage)">
+                                                    <i class="fa fa-share"></i>
+                                                </button>
+
+
+
+
                                                 <button class="icon-btn more-btn" aria-label="Thêm tùy chọn">
                                                     <i class="fa fa-ellipsis-v"></i>
                                                 </button>
@@ -297,7 +322,7 @@ export default xml`
                                         </div>
 
                                         <div class="message-content" t-att-style="threadMsg.collapsed ? 'display: none;' : 'display: block;'">
-                                            <t t-esc="threadMsg.body"/>
+                                            <t t-raw="threadMsg.body_cleaned || threadMsg.body"/>
                                         </div>
 
                                         <div class="email-attachments" t-if="threadMsg.attachments and threadMsg.attachments.length">
