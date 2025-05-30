@@ -3,7 +3,7 @@ import { Component, onMounted } from "@odoo/owl";
 import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
 import { initCKEditor, loadCKEditor } from "./ckeditor";
-import { onForward, onReply ,onAnalyze, onReplyAll, onSendEmail, toggleStar } from "./functions/index";
+import { onAnalyze, onForward, onReply, onReplyAll, onSendEmail, toggleStar } from "./functions/index";
 import { openComposeModal } from "./functions/openComposeModal";
 import { initialState } from "./state";
 import { loadStarredState, saveStarredState } from "./storageUtils";
@@ -176,7 +176,6 @@ export class GmailInbox extends Component {
     async loadGmailMessages(email, page = 1) {
         const account = this.state.accounts.find(acc => acc.email === email);
         if (!account) return;
-
         const res = await rpc("/gmail/messages", {
             account_id: parseInt(account.id),
             page: page,
@@ -208,7 +207,6 @@ export class GmailInbox extends Component {
         this.state.pagination.total = res.total;
         this.state.pagination.totalPages = Math.ceil(res.total / this.state.pagination.pageSize);
     }
-
 
 
     async goNextPage() {
