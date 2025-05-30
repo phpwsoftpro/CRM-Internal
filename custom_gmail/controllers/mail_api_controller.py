@@ -242,39 +242,53 @@ class MailAPIController(http.Controller):
 
         return result
 
-    @http.route(
-        "/api/send_email", type="http", auth="user", csrf=False, methods=["POST"]
-    )
+    @http.route("/api/send_email", type="http", auth="user", csrf=False, methods=["POST"])
     def send_email(self, **kwargs):
         data = json.loads(request.httprequest.get_data(as_text=True))
-        provider = data.get("provider")
-        to = data.get("to")
+
+        to = extract_email_only(data.get("to", ""))
         subject = data.get("subject")
         body_html = data.get("body_html")
+        thread_id = data.get("thread_id")
+        message_id = data.get("message_id")
 
+        if not to or not subject or not body_html:
+            return request.make_json_response(
+                {"status": "error", "message": "Missing required fields"}, status=400
+            )
+
+        # ✅ Lấy token từ gmail.account
         account = (
             request.env["gmail.account"]
             .sudo()
-            .search(
-                [("user_id", "=", request.env.user.id), ("provider", "=", provider)],
-                limit=1,
-            )
+            .search([
+                ("user_id", "=", request.env.user.id),
+                ("access_token", "!=", False),
+            ], limit=1)
         )
 
         if not account:
             return request.make_json_response(
-                {"status": "error", "message": "No linked account"}, status=400
+                {"status": "error", "message": "No Gmail token available"}, status=400
             )
 
-        if provider == "gmail":
-            result = send_email_with_gmail_api(
-                account.access_token, account.email, to, subject, body_html
-            )
-        elif provider == "outlook":
-            result = send_email_with_outlook_api(
-                account.access_token, account.email, to, subject, body_html
-            )
-        else:
-            result = {"status": "error", "message": "Invalid provider"}
+        access_token = account.access_token
+        sender_email = account.email
+
+        result = send_email_with_gmail_api(
+            access_token=access_token,
+            sender_email=sender_email,
+            to_email=to,
+            subject=subject,
+            html_content=body_html,
+            thread_id=thread_id,
+            message_id=message_id,
+            headers={
+                "In-Reply-To": f"<{message_id}>",
+                "References": f"<{message_id}>",
+            } if message_id else None
+        )
 
         return request.make_json_response(result)
+
+

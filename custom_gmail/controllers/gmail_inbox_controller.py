@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from odoo import http
 from odoo.http import request
 from bs4 import BeautifulSoup
@@ -480,68 +482,136 @@ def send_email_with_gmail_api(
 
 class MailAPIController(http.Controller):
 
-    @http.route(
-        "/api/send_email", type="http", auth="user", csrf=False, methods=["POST"]
-    )
+    @http.route("/api/send_email", type="http", auth="user", csrf=False, methods=["POST"])
     def send_email(self, **kwargs):
-        headers = dict(request.httprequest.headers)
         raw_data = request.httprequest.get_data(as_text=True)
-        _logger.info("Headers: %s", headers)
         _logger.info("Raw Data: %s", raw_data)
-
         try:
             data = json.loads(raw_data)
-            _logger.info("Parsed JSON: %s", data)
-        except json.JSONDecodeError as e:
-            _logger.error("Invalid JSON received: %s", e)
+        except json.JSONDecodeError:
             return request.make_json_response(
                 {"status": "error", "message": "Invalid JSON"}, status=400
             )
 
-        to = extract_email_only(data.get("to", ""))
+        # 1) Bắt dữ liệu đầu vào
+        to = data.get("to")
         subject = data.get("subject")
         body_html = data.get("body_html")
         thread_id = data.get("thread_id")
         message_id = data.get("message_id")
-        if not to or not subject or not body_html:
-            _logger.warning(
-                "Missing fields: to=%s, subject=%s, body_html=%s",
-                to,
-                subject,
-                body_html,
-            )
+        account_id = data.get("account_id")
+        if not all((to, subject, body_html, account_id)):
             return request.make_json_response(
                 {"status": "error", "message": "Missing required fields"}, status=400
             )
 
-        access_token = (
-            request.env["ir.config_parameter"].sudo().get_param("gmail_access_token")
-        )
-        sender_email = (
-            request.env["ir.config_parameter"]
-            .sudo()
-            .get_param("gmail_authenticated_email")
-        )
-
-        if not access_token or not sender_email:
-            _logger.error("Gmail token or authenticated email missing.")
+        # 2) Lấy gmail.account và token
+        acct = request.env["gmail.account"].sudo().browse(int(account_id))
+        if not acct.exists():
             return request.make_json_response(
-                {"status": "error", "message": "No Gmail token available"}, status=400
+                {"status": "error", "message": "Invalid Gmail account"}, status=400
             )
 
-        # ✅ Truyền thread_id nếu có
-        result = send_email_with_gmail_api(
-            access_token,
-            sender_email,
-            to,
-            subject,
-            body_html,
-            thread_id,
-            message_id,
+        # Refresh token nếu cần
+        now = fields.Datetime.now()
+        token = acct.access_token
+        if not token or (acct.token_expiry and acct.token_expiry < now):
+            _logger.info("🔄 Refreshing Gmail access token…")
+            config = request.env['mail.message'].sudo().get_google_config()
+            resp = requests.post(config["token_uri"], data={
+                "client_id": config["client_id"],
+                "client_secret": config["client_secret"],
+                "refresh_token": acct.refresh_token,
+                "grant_type": "refresh_token",
+            })
+            resp.raise_for_status()
+            tok = resp.json()
+            token = tok.get("access_token")
+            if not token:
+                return request.make_json_response(
+                    {"status": "error", "message": "Failed to refresh token"}, status=500
+                )
+            vals = {"access_token": token}
+            if tok.get("expires_in"):
+                expiry = now + timedelta(seconds=int(tok["expires_in"]))
+                vals["token_expiry"] = fields.Datetime.to_string(expiry)
+            acct.sudo().write(vals)
+
+        sender_email = acct.email
+
+        # 3) Build MIME message
+        mime_msg = MIMEMultipart()
+        mime_msg["to"] = to
+        mime_msg["from"] = sender_email
+        mime_msg["subject"] = subject
+        if message_id:
+            mime_msg["In-Reply-To"] = f"<{message_id}>"
+            mime_msg["References"] = f"<{message_id}>"
+        # Đính kèm body HTML
+        mime_msg.attach(MIMEText(body_html, "html"))
+
+        # 4) Base64-url-encode
+        raw_bytes = base64.urlsafe_b64encode(mime_msg.as_bytes())
+        raw_str = raw_bytes.decode()
+
+        payload = {"raw": raw_str}
+        if thread_id:
+            payload["threadId"] = thread_id
+
+        # 5) Gọi Gmail send endpoint
+        send_url = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+        payload = {
+            "raw": raw_str,
+        }
+        if thread_id:
+            payload["threadId"] = thread_id
+
+        resp = requests.post(
+            send_url,
             headers={
-                "In-Reply-To": f"<{message_id}>",
-                "References": f"<{message_id}>",
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
             },
+            json=payload,
         )
-        _logger.info("📤 Gmail API response: %s", result)
-        return request.make_json_response(result)
+
+        # Nếu 404 do thread không tìm thấy, retry gửi như mail mới
+        if resp.status_code == 404 and thread_id:
+            _logger.warning("⚠️ Thread %s not found, retry without threadId", thread_id)
+            # build payload mới
+            payload.pop("threadId", None)
+            resp = requests.post(
+                send_url,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+
+        if resp.status_code in (200, 202):
+            gmail_id = resp.json().get("id")
+            _logger.info("✅ Gmail sent message id=%s", gmail_id)
+            return request.make_json_response({
+                "status": "success",
+                "gmail_id": gmail_id,
+            })
+        else:
+            _logger.error("❌ Gmail send error: %s", resp.text)
+            return request.make_json_response({
+                "status": "error",
+                "code": resp.status_code,
+                "message": resp.text,
+            }, status=200)
+
+    @http.route('/gmail/debug_token', type='json', auth='user', csrf=False)
+    def get_gmail_access_token(self):
+        account = request.env['gmail.account'].sudo().search([('user_id', '=', request.env.user.id)], limit=1)
+        if not account:
+            return {'error': 'Không tìm thấy tài khoản Gmail'}
+        return {
+            'access_token': account.access_token,
+            'email': account.email,
+            'expires': str(account.token_expiry),
+        }
+
