@@ -298,6 +298,13 @@ export default xml`
                                                     <i class="fa fa-reply-all"></i>
                                                 </button>
 
+                                                <button class="action-btn analyze-email"
+                                                        aria-label="Phân tích nội dung"
+                                                        t-on-click="(ev) => this.onAnalyze(ev, state.selectedMessage)">
+                                                    <i class="fa fa-magic"></i> Phân tích
+                                                </button>
+
+
 
 
 

@@ -24,7 +24,8 @@ export function onSendEmail() {
         subject: subject,
         body_html: cleanBody,
         thread_id: thread_id,  
-        message_id: message_id 
+        message_id: message_id,
+        account_id: this.state.activeTabId
     };
     console.log("📤 Email sending data:", emailData); 
     // Gửi email với dữ liệu đã kiểm tra

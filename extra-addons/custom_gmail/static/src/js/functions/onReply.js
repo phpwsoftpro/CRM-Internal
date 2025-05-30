@@ -1,3 +1,6 @@
+/** @odoo-module **/
+
+
 export function onReply(ev, selectedMessage) {
     ev.stopPropagation();
 
