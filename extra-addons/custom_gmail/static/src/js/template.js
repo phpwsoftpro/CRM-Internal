@@ -272,10 +272,13 @@ export default xml`
                                                             </strong>
                                                         </div>
                                                         <div class="recipient-line">
-                                                                        đến tôi <span class="dropdown-arrow">
-                                                            <i class="fa fa-caret-down"></i>
-                                                        </span>
-                                                    </div>
+                                                            <div>
+                                                                <span>đến </span>
+                                                                <span class="to-summary" t-esc="this.getToSummaryPlusCC(threadMsg.email_receiver, threadMsg.email_cc, state.gmail_email || state.outlook_email)" />
+                                                                <i class="fa fa-chevron-down" style="cursor: pointer; margin-left: 5px;" t-on-click="() => this.showHeaderPopup(threadMsg)" />
+                                                            </div>
+                                                        </div>
+
                                                 </div>
                                             </div>
                                             <div class="header-actions">
@@ -320,7 +323,7 @@ export default xml`
                                         </div>
 
                                         <div class="message-content" t-att-style="threadMsg.collapsed ? 'display: none;' : 'display: block;'">
-                                            <t t-raw="threadMsg.body_cleaned || threadMsg.body"/>
+                                            <t t-raw="threadMsg.body_cleaned"/>
                                         </div>
 
                                         <div class="email-attachments" t-if="threadMsg.attachments and threadMsg.attachments.length">
@@ -453,5 +456,43 @@ export default xml`
         </div>
     </div>
 </t>
+<t t-if="state.showHeaderPopup and state.popupMessage">
+    <div class="email-header-popup-backdrop" t-on-click="closeHeaderPopup"
+         style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.3); z-index: 1000;">
+    </div>
+    <div class="email-header-popup"
+         style="position: fixed; top: 100px; left: 50%; transform: translateX(-50%); z-index: 1001;
+                background: white; padding: 16px; border: 1px solid #ccc; border-radius: 8px; width: 400px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 14px;">
+        <div><strong>từ:</strong> <t t-esc="state.popupMessage.sender" /></div>
+        <div><strong>đến:</strong> <t t-esc="state.popupMessage.email_receiver" /></div>
+        <t t-if="state.popupMessage.email_cc">
+            <t t-set="ccList" t-value="state.popupMessage.email_cc ? state.popupMessage.email_cc.split(',') : []" />
+            <div>
+                <strong>cc:</strong>
+                <t t-if="ccList.length &gt; 0">
+                    <span style="margin-left: 4px; white-space: nowrap;">
+                        <t t-esc="ccList[0].trim()" />
+                    </span>
+                </t>
+            </div>
+            <t t-if="ccList.length &gt; 1">
+                <t t-foreach="ccList.slice(1)" t-as="cc" t-key="cc">
+                    <div style="margin-left: 36px; white-space: nowrap;">
+                        <t t-esc="cc.trim()" />
+                    </div>
+                </t>
+            </t>
+        </t>
+
+
+        <div><strong>ngày:</strong> <t t-esc="state.popupMessage.date_received" /></div>
+        <div><strong>tiêu đề:</strong> <t t-esc="state.popupMessage.subject" /></div>
+        <div><strong>gửi bởi:</strong> gmail.com</div>
+        <div><strong>xác thực bởi:</strong> gmail.com</div>
+    </div>
+</t>
+
+
 </div>
 `;

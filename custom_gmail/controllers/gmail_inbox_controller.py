@@ -18,7 +18,6 @@ import time
 
 class GmailInboxController(http.Controller):
 
-
     @http.route("/gmail/messages", type="json", auth="user", csrf=False)
     def get_gmail_messages(self, **kwargs):
         """
@@ -66,24 +65,30 @@ class GmailInboxController(http.Controller):
                 for att in attachments
             ]
 
-            result.append({
-                "id": msg.id,
-                "subject": msg.subject or "No Subject",
-                "sender": msg.email_sender or "Unknown Sender",
-                "receiver": msg.email_receiver or "Unknown Receiver",
-                "date_received": msg.date_received.strftime("%Y-%m-%d %H:%M:%S") if msg.date_received else "",
-                "body": full_body,
-                "attachments": attachment_list,
-                "thread_id": msg.thread_id or "",
-                "message_id": msg.message_id or "",
-            })
+            result.append(
+                {
+                    "id": msg.id,
+                    "subject": msg.subject or "No Subject",
+                    "sender": msg.email_sender or "Unknown Sender",
+                    "receiver": msg.email_receiver or "Unknown Receiver",
+                    "email_receiver": msg.email_receiver or "",
+                    "email_cc": msg.email_cc or "",
+                    "date_received": (
+                        msg.date_received.strftime("%Y-%m-%d %H:%M:%S")
+                        if msg.date_received
+                        else ""
+                    ),
+                    "body": full_body,
+                    "attachments": attachment_list,
+                    "thread_id": msg.thread_id or "",
+                    "message_id": msg.message_id or "",
+                }
+            )
 
         return {
             "messages": result,
             "total": total,
         }
-
-
 
     @staticmethod
     def clean_gmail_body(html_content):
@@ -91,71 +96,6 @@ class GmailInboxController(http.Controller):
         for tag in soup(["style", "script"]):
             tag.decompose()
         return soup.get_text(separator="\n").strip()
-
-    # @http.route("/gmail/messages", type="json", auth="user", csrf=False)
-    # def get_gmail_messages(self, **kwargs):
-    #     """
-    #     API lấy danh sách email đã fetch từ Gmail API, đúng theo từng tài khoản Gmail.
-    #     """
-    #     account_id = kwargs.get("account_id")
-    #     domain = [
-    #         ("message_type", "=", "email"),
-    #         ("is_gmail", "=", True),
-    #     ]
-
-    #     if account_id:
-    #         domain.append(("gmail_account_id", "=", int(account_id)))
-
-    #     messages = (
-    #         request.env["mail.message"]
-    #         .sudo()
-    #         .search(domain, order="date_received desc", limit=1000)
-    #     )
-
-    #     result = []
-    #     for msg in messages:
-    #         full_body = self.clean_gmail_body(msg.body)
-    #         attachments = (
-    #             request.env["ir.attachment"]
-    #             .sudo()
-    #             .search(
-    #                 [
-    #                     ("res_model", "=", "mail.message"),
-    #                     ("res_id", "=", msg.id),
-    #                 ]
-    #             )
-    #         )
-
-    #         attachment_list = [
-    #             {
-    #                 "id": att.id,
-    #                 "name": att.name,
-    #                 "url": f"/web/content/{att.id}",
-    #                 "download_url": f"/web/content/{att.id}?download=true",
-    #                 "mimetype": att.mimetype,
-    #             }
-    #             for att in attachments
-    #         ]
-
-    #         result.append(
-    #             {
-    #                 "id": msg.id,
-    #                 "subject": msg.subject or "No Subject",
-    #                 "sender": msg.email_sender or "Unknown Sender",
-    #                 "receiver": msg.email_receiver or "Unknown Receiver",
-    #                 "date_received": (
-    #                     msg.date_received.strftime("%Y-%m-%d %H:%M:%S")
-    #                     if msg.date_received
-    #                     else ""
-    #                 ),
-    #                 "body": full_body,
-    #                 "attachments": attachment_list,
-    #                 "thread_id": msg.thread_id or "",
-    #                 "message_id": msg.message_id or "",
-    #             }
-    #         )
-
-    #     return result
 
     @http.route("/gmail/current_user_info", type="json", auth="user")
     def current_user_info(self, **kwargs):

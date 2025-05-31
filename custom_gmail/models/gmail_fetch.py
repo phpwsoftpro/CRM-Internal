@@ -207,20 +207,12 @@ class GmailFetch(models.Model):
         next_page_token = None
         base_url = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
 
-        sync_state = (
-            self.env["gmail.account.sync.state"]
-            .sudo()
-            .search([("gmail_account_id", "=", account.id)], limit=1)
+        sync_state = self.env["gmail.account.sync.state"].sudo().search(
+            [("gmail_account_id", "=", account.id)], limit=1
+        ) or self.env["gmail.account.sync.state"].sudo().create(
+            {"gmail_account_id": account.id}
         )
 
-        if not sync_state:
-            sync_state = (
-                self.env["gmail.account.sync.state"]
-                .sudo()
-                .create({"gmail_account_id": account.id})
-            )
-
-        # ⏱️ Skip fetch nếu mới fetch dưới 30s
         if (
             sync_state.last_fetch_at
             and (datetime.utcnow() - sync_state.last_fetch_at).total_seconds() < 30
@@ -239,7 +231,10 @@ class GmailFetch(models.Model):
         )
 
         while fetched_count < max_messages:
-            params = {"maxResults": 15, "q": "in:inbox"}
+            params = {
+                "maxResults": 15,
+                "q": "in:inbox OR in:sent",  # ✅ Lấy cả chiều gửi và nhận
+            }
             if next_page_token:
                 params["pageToken"] = next_page_token
 
@@ -252,7 +247,6 @@ class GmailFetch(models.Model):
 
             messages = response.json().get("messages", [])
             next_page_token = response.json().get("nextPageToken")
-
             if not messages:
                 break
 
@@ -275,8 +269,7 @@ class GmailFetch(models.Model):
                 payload = msg_data.get("payload", {})
 
                 def extract_header(payload, header_name):
-                    headers = payload.get("headers", [])
-                    for h in headers:
+                    for h in payload.get("headers", []):
                         if h.get("name", "").lower() == header_name.lower():
                             return h.get("value", "")
                     for part in payload.get("parts", []):
@@ -299,6 +292,7 @@ class GmailFetch(models.Model):
                 except Exception as e:
                     _logger.warning("⚠️ Parse date thất bại: %s (%s)", raw_date, e)
                     date_received = None
+
                 raw_message_id = extract_header(payload, "Message-Id")
                 message_id = raw_message_id.strip("<>") if raw_message_id else ""
 
@@ -317,7 +311,7 @@ class GmailFetch(models.Model):
                         "email_sender": sender,
                         "email_receiver": receiver,
                         "email_cc": cc,
-                        "thread_id": msg.get("threadId"),
+                        "thread_id": msg.get("threadId"),  # ✅ Dựa vào Gmail threadId
                         "message_id": message_id,
                     }
                 )
@@ -343,7 +337,11 @@ class GmailFetch(models.Model):
                         [
                             ("is_gmail", "=", True),
                             ("author_id", "=", account.user_id.partner_id.id),
-                            ("create_date", ">=", datetime.now() - timedelta(days=30)),
+                            (
+                                "create_date",
+                                ">=",
+                                datetime.utcnow() - timedelta(days=30),
+                            ),
                         ]
                     )
                     .mapped("gmail_id")
