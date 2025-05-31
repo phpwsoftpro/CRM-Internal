@@ -59,7 +59,10 @@ export class GmailInbox extends Component {
         this.switchTab = this._switchTab.bind(this);
         this.state.isLoading = false;
         this.onRefresh = this.onRefresh.bind(this);
-
+        this.showHeaderPopup = this.showHeaderPopup.bind(this);
+        this.closeHeaderPopup = this.closeHeaderPopup.bind(this);
+        this.state.showHeaderPopup = false;
+        this.state.popupMessage = null;
 
         this.state.messagesByEmail = {};
     
@@ -72,8 +75,6 @@ export class GmailInbox extends Component {
                 this.loadMessages(this.state.accounts[0].email);
             }
         }
-
-
 
         // 🔁 Mount chính: Load account
         onMounted(async () => {
@@ -100,17 +101,6 @@ export class GmailInbox extends Component {
             // Xác thực email
             await this.loadAuthenticatedEmail();
             await this.loadOutlookAuthenticatedEmail();
-
-            // Ping định kỳ
-            // setInterval(() => {
-            //     if (!document.hidden) {
-            //         for (const account of this.state.accounts) {
-            //             if (account.type === "gmail") {
-            //                 rpc("/gmail/session/ping", { account_id: parseInt(account.id) });
-            //             }
-            //         }
-            //     }
-            // }, 30000);
             setInterval(() => {
                 if (!document.hidden) {
                     for (const account of this.state.accounts) {
@@ -172,42 +162,6 @@ export class GmailInbox extends Component {
 
 
 
-    async loadGmailMessages(email, page = 1) {
-        const account = this.state.accounts.find(acc => acc.email === email);
-        if (!account) return;
-
-        const res = await rpc("/gmail/messages", {
-            account_id: parseInt(account.id),
-            page: page,
-            limit: this.state.pagination.pageSize,
-        });
-
-        // Lưu toàn bộ messages theo email
-        this.state.messagesByEmail[email] = res.messages;
-        this.state.messages = res.messages;
-
-        // ✅ Phân nhóm theo thread_id
-        this.state.threads = {};
-        for (const msg of res.messages) {
-            if (msg.thread_id) {
-                if (!this.state.threads[msg.thread_id]) {
-                    this.state.threads[msg.thread_id] = [];
-                }
-                this.state.threads[msg.thread_id].push(msg);
-            }
-        }
-
-        // ✅ Sắp xếp các email trong mỗi thread theo thời gian tăng dần
-        for (const thread_id in this.state.threads) {
-            this.state.threads[thread_id].sort((a, b) => new Date(a.date_received) - new Date(b.date_received));
-        }
-
-        // Cập nhật phân trang
-        this.state.pagination.currentPage = page;
-        this.state.pagination.total = res.total;
-        this.state.pagination.totalPages = Math.ceil(res.total / this.state.pagination.pageSize);
-    }
-
 
 
     async goNextPage() {
@@ -239,7 +193,56 @@ export class GmailInbox extends Component {
         }
     }
     
-    
+    async loadGmailMessages(email, page = 1) {
+    const account = this.state.accounts.find(acc => acc.email === email);
+    if (!account) return;
+
+    const res = await rpc("/gmail/messages", {
+        account_id: parseInt(account.id),
+        page: page,
+        limit: this.state.pagination.pageSize,
+    });
+
+    // ✅ Gom message theo thread_id
+    this.state.threads = {};
+    for (const msg of res.messages) {
+        // ✅ Làm sạch nội dung để hiển thị
+        msg.body_cleaned = msg.body?.split('<div class="gmail_quote">')[0]
+                        || msg.body?.replace(/<blockquote[\s\S]*?<\/blockquote>/gi, "")
+                        || msg.body;
+
+        // ✅ Bổ sung các trường cần thiết
+        msg.sender = msg.sender || msg.email_sender || "Unknown Sender";
+        msg.email_receiver = msg.email_receiver || '';
+        msg.email_cc = msg.email_cc || '';
+
+        if (msg.thread_id) {
+            if (!this.state.threads[msg.thread_id]) {
+                this.state.threads[msg.thread_id] = [];
+            }
+            this.state.threads[msg.thread_id].push(msg);
+        }
+    }
+
+        // ✅ Sắp xếp mỗi thread theo thời gian tăng dần
+        for (const thread_id in this.state.threads) {
+            this.state.threads[thread_id].sort((a, b) => new Date(a.date_received) - new Date(b.date_received));
+        }
+
+        // ✅ Lấy email mới nhất trong mỗi thread để hiển thị danh sách
+        const latestMessagesPerThread = Object.values(this.state.threads).map(threadMsgs => {
+            return threadMsgs[threadMsgs.length - 1];  // cuối cùng = mới nhất
+        });
+
+        this.state.messagesByEmail[email] = latestMessagesPerThread;
+        this.state.messages = latestMessagesPerThread;
+
+        // Phân trang
+        this.state.pagination.currentPage = page;
+        this.state.pagination.total = res.total;
+        this.state.pagination.totalPages = Math.ceil(res.total / this.state.pagination.pageSize);
+    }
+
     async loadMessages(email, forceReload = false) {
         const acc = this.state.accounts.find(a => a.email === email);
         if (!acc) {
@@ -252,11 +255,43 @@ export class GmailInbox extends Component {
         }
 
         if (!forceReload && this.state.messagesByEmail[email]) {
-            this.state.messages = this.state.messagesByEmail[email];
+            const messages = this.state.messagesByEmail[email];
+
+            // ✅ Re-patch toàn bộ để đảm bảo dữ liệu đủ cho template
+            const patchedMessages = messages.map(msg => ({
+                ...msg,
+                body_cleaned: msg.body?.split('<div class="gmail_quote">')[0]
+                            || msg.body?.replace(/<blockquote[\s\S]*?<\/blockquote>/gi, "")
+                            || msg.body,
+                sender: msg.sender || msg.email_sender || "Unknown Sender",
+                email_receiver: msg.email_receiver || '',
+                email_cc: msg.email_cc || '',
+            }));
+
+            this.state.messages = patchedMessages;
+
+            // ✅ Khôi phục lại threads
+            this.state.threads = {};
+            for (const msg of patchedMessages) {
+                if (msg.thread_id) {
+                    if (!this.state.threads[msg.thread_id]) {
+                        this.state.threads[msg.thread_id] = [];
+                    }
+                    this.state.threads[msg.thread_id].push(msg);
+                }
+            }
+
+            // ✅ Sắp xếp lại thread
+            for (const thread_id in this.state.threads) {
+                this.state.threads[thread_id].sort((a, b) => new Date(a.date_received) - new Date(b.date_received));
+            }
+
             return;
         }
 
-        this.state.loading = true;  // 🟡 Chỉ bật loading
+        
+
+        this.state.loading = true;
         try {
             if (acc.type === 'gmail') {
                 await this.loadGmailMessages(email);
@@ -264,18 +299,25 @@ export class GmailInbox extends Component {
                 await this.loadOutlookMessages(email);
             }
         } finally {
-            this.state.loading = false;  // ✅ Tắt loading sau khi xong
+            this.state.loading = false;
         }
-    }  
+    }
+ 
     
     async loadAuthenticatedEmail() {
         try {
-            const result = await rpc("/gmail/user_email", {});
-            this.state.gmail_email = result.email || "No Email"; // <-- gmail_email riêng
+            const accountId = this.state.activeTabId;
+            const result = await rpc("/gmail/user_email", {
+                account_id: accountId
+            });
+            this.state.gmail_email = result.email || "No Email";
+            console.log("✅ Gmail email loaded:", this.state.gmail_email);
         } catch (error) {
+            console.error("❌ Lỗi khi gọi /gmail/user_email:", error);
             this.state.gmail_email = "Error loading Gmail";
         }
     }
+
     async loadOutlookAuthenticatedEmail() {
         try {
             const result = await rpc("/outlook/user_email", {});
@@ -287,21 +329,39 @@ export class GmailInbox extends Component {
     
     async onMessageClick(msg) {
         if (!msg) return;
-    
+        console.log("📥 Clicked message:", msg);
+        console.log("📨 currentUserEmail:", this.state.gmail_email || this.state.outlook_email);
+        console.log("📨 email_receiver:", msg.email_receiver);
         this.state.selectedMessage = msg;
         const threadId = msg.thread_id;
         const thread = threadId ? this.state.threads?.[threadId] : null;
-        this.state.currentThread = Array.isArray(thread) && thread.length ? thread : [msg];
-    
-        // ✅ Log để debug
-        // console.log("💬 Clicked message:", msg);
-    
-        // ✅ Nếu là Outlook và body chưa có
+
+        // ✅ Làm sạch body cho từng email trong thread
+        this.state.currentThread = Array.isArray(thread) && thread.length
+            ? thread.map(m => ({
+                ...m,
+                body_cleaned: m.body?.split('<div class="gmail_quote">')[0]
+                        || m.body?.replace(/<blockquote[\s\S]*?<\/blockquote>/gi, "")
+                        || m.body,
+                sender: m.sender || m.email_sender || "Unknown Sender",  // ✅ Dòng quan trọng
+                email_receiver: m.email_receiver || '',
+                email_cc: m.email_cc || '',
+            }))
+            : [{
+                ...msg,
+                body_cleaned: msg.body,
+                sender: msg.sender || msg.email_sender || "Unknown Sender",  // ✅ Dòng quan trọng
+                email_receiver: msg.email_receiver || '',
+                email_cc: msg.email_cc || '',
+            }];
+
+
+
+        // ✅ Nếu là Outlook và chưa có nội dung chi tiết
         if (
             (msg.type === "outlook" || (msg.from && msg.from.includes("@outlook"))) &&
             (!msg.body || msg.body === "No Content")
         ) {
-            // console.log("📩 Fetching full body for Outlook:", msg.id);
             try {
                 const res = await rpc("/outlook/message_detail", { message_id: msg.id });
                 if (res.status === "ok") {
@@ -314,12 +374,14 @@ export class GmailInbox extends Component {
                 console.error("❌ Lỗi khi lấy chi tiết email Outlook:", err);
             }
         }
-    
+
+        // ✅ Đánh dấu đã đọc nếu cần
         if (msg.unread) {
             msg.unread = false;
             this.updateMessage(msg);
         }
     }
+
     
     
     updateMessage(msg) {
@@ -475,10 +537,10 @@ export class GmailInbox extends Component {
         this.state.activeTabId = accountId;
         const acc = this.state.accounts.find((a) => a.id === accountId);
         if (acc) {
+            this.loadAuthenticatedEmail(); // 👈 gọi lại để cập nhật gmail_email
             this.loadMessages(acc.email);
         }
     };
-    
     closeTab = async (accountId) => {
         const currentUserId = await getCurrentUserId();
     
@@ -531,6 +593,85 @@ export class GmailInbox extends Component {
             this.gmailPingIntervalId = null;
         }
     };
+    toggleCcDetail(threadMsg) {
+    if (!("showCcDetail" in threadMsg)) {
+        threadMsg.showCcDetail = true;
+    } else {
+        threadMsg.showCcDetail = !threadMsg.showCcDetail;
+    }
+    this.render(); // Cập nhật lại template
+    }
+
+    getCCSummary(ccString) {
+        if (!ccString) return "";
+        const emails = ccString.split(',').map(e => e.trim());
+        if (emails.length <= 2) return emails.join(', ');
+        return `${emails[0]}, ${emails[1]}, ...`;
+    }
+
+    getToSummaryPlusCC(toString, ccString, currentUserEmail) {
+    const toNames = this.getDisplayNamesFromList(toString, currentUserEmail, true);  // true = allow "tôi"
+    const ccNames = this.getDisplayNamesFromList(ccString, currentUserEmail, false);
+
+    const allNames = [...toNames, ...ccNames];
+    if (allNames.length === 0) return "";
+    if (allNames.length <= 2) return allNames.join(", ");
+    return `${allNames[0]}, ${allNames[1]}, ...`;
+    }
+
+    getToSummary(addressString, currentUserEmail) {
+        if (!addressString) return "";
+
+        const addresses = addressString.split(",").map(a => a.trim());
+        const normalizedCurrent = (currentUserEmail || "").trim().toLowerCase();
+
+        const includesMe = addresses.some(email => email.toLowerCase().includes(normalizedCurrent));
+        const others = addresses.filter(email => !email.toLowerCase().includes(normalizedCurrent));
+
+        if (includesMe) {
+            if (others.length === 0) return "tôi";
+            if (others.length === 1) return `tôi, ${this.extractDisplayName(others[0])}`;
+            return `tôi và ${others.length} người khác`;
+        } else {
+            if (addresses.length === 1) return this.extractDisplayName(addresses[0]);
+            return `${this.extractDisplayName(addresses[0])} và ${addresses.length - 1} người khác`;
+        }
+    }
+
+    extractDisplayName(emailString) {
+        const match = emailString.match(/"?(.*?)"?\s*<(.+?)>/);
+        if (match) {
+            return match[1] || match[2].split("@")[0];
+        }
+        return emailString.split("@")[0];
+    }
+    getDisplayNamesFromList(addressString, currentUserEmail, allowToi = true) {
+    if (!addressString) return [];
+    const addresses = addressString.split(",").map(a => a.trim());
+    const normalizedCurrent = (currentUserEmail || "").trim().toLowerCase();
+
+    return addresses.map(addr => {
+        if (allowToi && addr.toLowerCase().includes(normalizedCurrent)) {
+            return "tôi";
+        }
+        const match = addr.match(/"?(.*?)"?\s*<(.+?)>/);
+        return match ? (match[1] || match[2].split("@")[0]) : addr.split("@")[0];
+    });
+    }
+
+
+
+    showHeaderPopup(threadMsg) {
+    this.state.popupMessage = threadMsg;
+    this.state.showHeaderPopup = true;
+    }
+
+    closeHeaderPopup() {
+        this.state.showHeaderPopup = false;
+    }
+
+
+
     
 }    
 
