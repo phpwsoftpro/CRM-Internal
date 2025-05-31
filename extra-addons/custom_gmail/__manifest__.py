@@ -11,6 +11,7 @@
         "security/ir.model.access.csv",
         "views/discuss_view.xml",
         "data/ir_cron.xml",
+        "views/GmailAccount_view.xml",
     ],
     "assets": {
         "web.assets_backend": [
@@ -25,6 +26,7 @@
             "custom_gmail/static/src/js/functions/toggleStar.js",
             "custom_gmail/static/src/js/functions/onReply.js",
             "custom_gmail/static/src/js/functions/onReplyAll.js",
+            "custom_gmail/static/src/js/functions/onAnalyze.js",
             "custom_gmail/static/src/js/functions/onForward.js",
             "custom_gmail/static/src/js/functions/openComposeModal.js",
             "custom_gmail/static/src/js/functions/fillComposeForm.js",
@@ -38,7 +40,7 @@
             "custom_gmail/static/src/js/upload_adapter.js",
         ]
     },
-    "post_init_hook": "post_init_hook",
+    # "post_init_hook": "post_init_hook",
     "installable": True,
     "application": False,
 }

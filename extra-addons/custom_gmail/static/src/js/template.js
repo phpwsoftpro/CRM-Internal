@@ -115,7 +115,7 @@ export default xml`
             <t t-if="state.loading">
                 <div class="simple-loading-banner">Loading...</div>
             </t>
-            <!-- Filters & Actions -->
+   *         <!-- Filters & Actions -->
             <div class="header-actions">
                 <div class="email-checkbox-all">
                     <input type="checkbox" id="selectAll" t-on-click="toggleSelectAll" style="cursor: pointer;"/>
@@ -171,8 +171,6 @@ export default xml`
                         </button>
                     </div>
                 </div>
-
-
 
             </div>
 
@@ -290,9 +288,34 @@ export default xml`
                                                 <button class="icon-btn star-btn" aria-label="Đánh dấu sao" t-on-click.stop="() => this.toggleStar(threadMsg)">
                                                     <i t-att-class="threadMsg.starred ? 'fa fa-star' : 'fa fa-star-o'"></i>
                                                 </button>
+
+
+
                                                 <button class="icon-btn reply" aria-label="Phản hồi" t-on-click="(ev) => this.onReply(ev, threadMsg)">
                                                     <i class="fa fa-reply"></i>
                                                 </button>
+
+                                                <button class="icon-btn reply-all" aria-label="Trả lời tất cả" t-on-click="(ev) => this.onReplyAll(ev, state.selectedMessage)">
+                                                    <i class="fa fa-reply-all"></i>
+                                                </button>
+
+                                                <button class="action-btn analyze-email"
+                                                        aria-label="Phân tích nội dung"
+                                                        t-on-click="(ev) => this.onAnalyze(ev, state.selectedMessage)">
+                                                    <i class="fa fa-magic"></i> Phân tích
+                                                </button>
+
+
+
+
+
+                                                <button class="icon-btn forward" aria-label="Chuyển tiếp" t-on-click="(ev) => this.onForward(ev, state.selectedMessage)">
+                                                    <i class="fa fa-share"></i>
+                                                </button>
+
+
+
+
                                                 <button class="icon-btn more-btn" aria-label="Thêm tùy chọn">
                                                     <i class="fa fa-ellipsis-v"></i>
                                                 </button>

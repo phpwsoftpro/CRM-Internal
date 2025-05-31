@@ -22,7 +22,7 @@
             # "custom_email_marketing/static/src/js/kanban_record.js",
             # "custom_email_marketing/static/src/js/kanban_column_sort.js",
             "custom_email_marketing/static/src/js/mailing_list_kanban_header.js",
-            # "custom_email_marketing/static/src/js/kanban_header_cogmenu.js",
+            "custom_email_marketing/static/src/js/kanban_header_cogmenu.js",
         ],
     },
     "data": [

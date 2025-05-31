@@ -14,6 +14,9 @@ class ProjectTask(models.Model):
     start_date_now = fields.Datetime(string="Start Date Now")
     # start_date_n = fields.Datetime(string="Start Date Now")
 
+    deepseek_text = fields.Text(string="Text DeepSeek")
+    # deepseek_text = fields.Html("Text DeepSeek", default='', sanitize_style=True)
+
 
 
 

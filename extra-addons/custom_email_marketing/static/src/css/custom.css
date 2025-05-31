@@ -289,3 +289,8 @@ a.list-group-item:hover {
     overflow: visible !important;
     text-overflow: unset !important;
 }
+
+/* depcription project */
+.note-editable {
+    height: auto;
+}
