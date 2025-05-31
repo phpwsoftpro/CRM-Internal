@@ -10,23 +10,33 @@ function hasUrlChanged() {
     }
     return false;
 }
+function isCreateMode() {
+    // Odoo create form thường không có id trong URL hoặc có 'new'
+    const url = window.location.href;
+    return url.includes("/new") || url.includes("create");
+}
+
 function activateCommentTab() {
-    const noteBtn = document.querySelector(".o-mail-Chatter-logNote");
-    const composer = document.querySelector(".o-mail-Composer");
-
-    // Chỉ kiểm tra field có class lỗi
-    const invalidFields = document.querySelectorAll(".o_field_invalid");
-
-    if (invalidFields.length > 0) {
-        console.warn("⚠️ Form contains invalid fields. Skipping auto-comment tab.");
+    // Nếu đang ở create mode → không tự mở comment
+    if (isCreateMode()) {
+        console.warn("🚫 Create mode detected. Skipping auto-comment.");
         return;
     }
 
-    // Kiểm tra đã có nút và chưa mở khung comment
+    const noteBtn = document.querySelector(".o-mail-Chatter-logNote");
+    const composer = document.querySelector(".o-mail-Composer");
+
+    const invalidFields = document.querySelectorAll(".o_field_invalid");
+    if (invalidFields.length > 0) {
+        console.warn("⚠️ Form contains invalid fields. Skipping auto-comment.");
+        return;
+    }
+
     if (noteBtn && (!composer || composer.classList.contains("d-none"))) {
         noteBtn.click();
     }
 }
+
 
 function updateChatterButtons() {
     const topbar = document.querySelector(".o-mail-Chatter-topbar");
