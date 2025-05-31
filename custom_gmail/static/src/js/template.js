@@ -115,7 +115,7 @@ export default xml`
             <t t-if="state.loading">
                 <div class="simple-loading-banner">Loading...</div>
             </t>
-            <!-- Filters & Actions -->
+   *         <!-- Filters & Actions -->
             <div class="header-actions">
                 <div class="email-checkbox-all">
                     <input type="checkbox" id="selectAll" t-on-click="toggleSelectAll" style="cursor: pointer;"/>
@@ -171,8 +171,6 @@ export default xml`
                         </button>
                     </div>
                 </div>
-
-
 
             </div>
 

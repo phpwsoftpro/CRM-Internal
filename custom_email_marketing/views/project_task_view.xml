@@ -133,4 +133,22 @@
             </xpath>
         </field>
     </record>
+
+<!--    thêm page notebook để chứa nội dung AI-->
+    <record id="view_task_form_inherit_deepseek" model="ir.ui.view">
+        <field name="name">project.task.form.inherit.deepseek</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/> <!-- ID của view gốc -->
+        <field name="arch" type="xml">
+            <!-- Thêm sau tab "Extra Info" hoặc tab nào bạn muốn -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Text DeepSeek" name="deepseek_page">
+                    <group>
+                        <field name="deepseek_text" placeholder="Enter DeepSeek prompt or result..."/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>
